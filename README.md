@@ -9,3 +9,6 @@ This deals with plots (enabled in settings.py)
 
 run_opts.py 
 These are optional functions that the main code dips out to. Most can be enabled or disabled in settings.py
+
+settings.py
+Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
