@@ -1,4 +1,4 @@
-# ML_RF.
+# ML_RF
 Machine Learning Random Forest Classification for DR12.
 
 MLdr12_RF.py 
