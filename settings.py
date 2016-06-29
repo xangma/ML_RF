@@ -24,13 +24,13 @@ feat_outfile = 'ML_RF_feat_importance.txt'                                  # Fi
 logfile_out='ML_RF_logfile.txt'
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
-weightinput=[]#[34,33,33]
+weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 
 diagnostics=1
 # MLA settings
 MLA = get_function('sklearn.ensemble.RandomForestClassifier')               # Which MLA to load
 MLA = MLA(n_estimators=50,n_jobs=6,bootstrap=True,verbose=True)             # MLA settings
-actually_run=0                                                              # Actually run the MLA
+actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
