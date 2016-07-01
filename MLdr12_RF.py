@@ -14,13 +14,14 @@ import time
 import plots
 
 import logging
-
+temp_train='/users/moricex/ML_RF/temp_train.csv'
+temp_pred='/users/moricex/ML_RF/temp_pred.csv'
 # Change directory
 os.chdir(settings.programpath)
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
-logging.basicConfig(level=logging.DEBUG,\
+logging.basicConfig(level=logging.INFO,\
                     format='%(asctime)s %(name)-20s %(levelname)-6s %(message)s',\
                     datefmt='%d-%m-%y %H:%M',\
                     filename='ML_RF.log',\
@@ -47,7 +48,8 @@ if 'clf' in locals():
 
 logger.info('Program start')
 logger.info('------------')
-logger.info('Loading data')
+
+logger.info('Loading data for preprocessing')
 logger.info('------------')
 
 # Check if data is loaded, else load it (Might remove this)
@@ -132,35 +134,116 @@ del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all #
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
+    
+#    wr_tr = csv.writer(tempcsv_tr)
+#    wr_pr = csv.writer(tempcsv_pr)
+#    wr_tr.writerow(XX)
+#    wr_pr.writerow(XXpredict)
 
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
-if settings.actually_run == 1: # Run MLA switch
 
-    clf = settings.MLA # Pulls in machine learning algorithm from settings
-    logger.info('MLA settings') 
-    logger.info(clf)
-    logger.info('------------')    
-    start, end=[],[] # Timer
-    logger.info('Fit start')
+if settings.actually_run == 1:
+    logger.info('Starting MLA run')
     logger.info('------------')
-    start = time.time()
-    clf = clf.fit(XX[:,0:n_feat],yy) # XX is train array
-    end = time.time()
-    logger.info('Fit ended in %s seconds' %(end-start))
-    logger.info('------------')
+    if settings.pyspark.on == 1:
+        from pyspark import SparkContext
+        from pyspark.sql import SQLContext
+        from pyspark.ml import Pipeline
+        from pyspark.ml.feature import VectorAssembler
+        from pyspark.ml.classification import RandomForestClassifier
+        from pyspark.ml.feature import StringIndexer, VectorIndexer
+        # pyspark go
+        
+        if settings.pyspark.remake_csv == 1:
+            logger.info('Remaking csvs for pysparks...')
+            numpy.savetxt(temp_train, XX, delimiter=",")
+            logger.info('Training csv saved')
+            numpy.savetxt(temp_pred, XXpredict, delimiter=",")
+            logger.info('Predict csv saved')
+        sc = SparkContext(appName="ML_RF")
+        
+        sclogger=sc._jvm.org.apache.log4j
+        sclogger.LogManager.getLogger("org").setLevel(sclogger.Level.ERROR)
+        sclogger.LogManager.getLogger("akka").setLevel(sclogger.Level.ERROR)
+        sqlContext=SQLContext(sc)
+        
+        data_tr = sqlContext.read.format("com.databricks.spark.csv").options(header='false',inferSchema='true').load(temp_train)
+        data_pr = sqlContext.read.format("com.databricks.spark.csv").options(header='false',inferSchema='true').load(temp_pred)
+        data_tr=data_tr.withColumnRenamed(data_tr.columns[-1],"label")
+        data_pr=data_pr.withColumnRenamed(data_pr.columns[-1],"label")
+        
+        assembler=VectorAssembler(inputCols=data_tr.columns[:-1],outputCol="features")
+        reduced=assembler.transform(data_tr.select('*'))
+        
+        assembler_pr=VectorAssembler(inputCols=data_pr.columns[:-1],outputCol="features")
+        reduced_pr=assembler_pr.transform(data_pr.select('*'))
+        
+        labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(reduced)        
+        featureIndexer =VectorIndexer(inputCol="features", outputCol="indexedFeatures").fit(reduced)
+        
+        rf = RandomForestClassifier(labelCol="indexedLabel", featuresCol="indexedFeatures",numTrees=100,maxDepth=5,maxBins=200)
+        
+        pipeline = Pipeline(stages=[labelIndexer, featureIndexer, rf])
+        start, end=[],[] # Timer
+        logger.info('Fit start')
+        logger.info('------------')
+        start = time.time()
+        model=pipeline.fit(reduced)
+        end = time.time()
+        logger.info('Fit ended in %s seconds' %(end-start))
+        logger.info('------------')
+        start, end=[],[]
+        logger.info('Predict start')
+        logger.info('------------')
+        start = time.time()
+        predictions = model.transform(reduced_pr)
+        from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+        evaluator = MulticlassClassificationEvaluator(labelCol="indexedLabel",predictionCol="prediction",metricName="precision")
+        accuracy = evaluator.evaluate(predictions)
+        logger.info("Test Error = %g" %(1.0-accuracy))
+        logger.info('------------')
+        logger.info('Pulling results ...')
+        yypredict=numpy.array(predictions.select("indexedLabel").collect())
+        yypredict=yypredict[:,0]
+        result=numpy.array(predictions.select("prediction").collect())
+        result=result[:,0]
+        XXpredict=numpy.array(predictions.select("indexedFeatures").collect())
+        XXpredict=XXpredict[:,0]
+        probs=numpy.array(predictions.select("probability").collect())
+        probs=probs[:,0]
+        XXpredict=numpy.column_stack((XXpredict,yypredict))
+#        resultsstack=numpy.array(predictions.select("indexedFeatures","indexedLabel","prediction","probability").collect())
+        end=time.time()
+        logger.info('Predict ended in %s seconds' %(end-start))
+        logger.info('------------')
     
-    start, end=[],[]
-    logger.info('Predict start')
-    logger.info('------------')
-    start = time.time()
-    result = clf.predict(XXpredict[:,0:n_feat]) # XX is predict array.
-    probs = clf.predict_proba(XXpredict[:,0:n_feat]) # Only take from 0:n_feat because answers are tacked on end
-    feat_importance = clf.feature_importances_
-    end = time.time()
-    logger.info('Predict ended in %s seconds' %(end-start))
-    logger.info('------------')
+    else:
+     # Run MLA switch
+        clf = settings.MLA # Pulls in machine learning algorithm from settings
+        logger.info('MLA settings') 
+        logger.info(clf)
+        logger.info('------------')    
+        start, end=[],[] # Timer
+        logger.info('Fit start')
+        logger.info('------------')
+        start = time.time()
+        clf = clf.fit(XX[:,0:n_feat],yy) # XX is train array
+        end = time.time()
+        logger.info('Fit ended in %s seconds' %(end-start))
+        logger.info('------------')
+        
+        start, end=[],[]
+        logger.info('Predict start')
+        logger.info('------------')
+        start = time.time()
+        result = clf.predict(XXpredict[:,0:n_feat]) # XX is predict array.
+        probs = clf.predict_proba(XXpredict[:,0:n_feat]) # Only take from 0:n_feat because answers are tacked on end
+        feat_importance = clf.feature_importances_
+        end = time.time()
+        logger.info('Predict ended in %s seconds' %(end-start))
+        logger.info('------------')
     
     logger.info('Totalling results')
     n = sum(result == yypredict)

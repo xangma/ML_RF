@@ -1,0 +1,14 @@
+
+photoz.py
+
+spark-clean.sh
+
+spyder.py
+
+spark-test-job.sh
+
+*.csv
+
+*.txt
+
+nodelist
