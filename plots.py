@@ -25,7 +25,7 @@ def plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr):
         plt.hist(XX[:,-1],bins=len(uniquesubclass[1]))
         plt.close(fig)
 
-def plot_bandvprob(resultsstack,filtstats,probshape):
+def plot_bandvprob(resultsstack,filtstats,probshape): # Plots each filter band vs probability of each class.
     if settings.plotbandvprob == 1: # If plotting selected
         bottom=0
         plots_log.info('')
@@ -67,7 +67,7 @@ def plot_bandvprob(resultsstack,filtstats,probshape):
                 bottom=bottom + filtstats[j][0] + filtstats[j][1]
             bottom=0
 
-def plot_colourvprob(resultsstack,filtstats,probshape,combs):
+def plot_colourvprob(resultsstack,filtstats,probshape,combs): # Plots each colour vs probability of each class
     if settings.plotcolourvprob == 1: # If plotting selected
         bottom=0
         plots_log.info('')

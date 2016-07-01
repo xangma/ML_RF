@@ -12,12 +12,12 @@ import numpy
 import astropy.io.fits as fits
 import time
 import plots
-
 import logging
-temp_train='/users/moricex/ML_RF/temp_train.csv'
+
+temp_train='/users/moricex/ML_RF/temp_train.csv' # Define temp files for pyspark
 temp_pred='/users/moricex/ML_RF/temp_pred.csv'
-# Change directory
-os.chdir(settings.programpath)
+
+os.chdir(settings.programpath) # Change directory
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
@@ -30,30 +30,25 @@ logging.basicConfig(level=logging.INFO,\
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-# tell the handler to use this format
-console.setFormatter(formatter)
-# add the handler to the root logger
-logger=logging.getLogger('')
+console.setFormatter(formatter) # tell the handler to use this format
+logger=logging.getLogger('') # add the handler to the root logger
 logger.addHandler(console)
 
-if 'plots' not in dirs:
+if 'plots' not in dirs: # Create plots directory  if it doesn't exist
     os.mkdir('plots')
-# Number to train and predict
-traindatanum=settings.traindatanum
+
+traindatanum=settings.traindatanum # Number to train and predict
 predictdatanum=settings.predictdatanum
 
-# Clear the last fit if there was one
-if 'clf' in locals():
+if 'clf' in locals(): # Clear the last fit if there was one
     del clf
 
 logger.info('Program start')
 logger.info('------------')
-
 logger.info('Loading data for preprocessing')
 logger.info('------------')
 
-# Check if data is loaded, else load it (Might remove this)
-if 'traindata' in locals():
+if 'traindata' in locals(): # Check if data is loaded, else load it (Might remove this)
     logger.info('Data already loaded, skipping')
     logger.info('------------')
 else:
@@ -63,29 +58,27 @@ else:
     preddata=preddata[1].data
 
 # Extra options before running
+traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find and exclude unclassified objects (subclass)
 
-# Find and exclude unclassified objects (subclass)
-traindata, preddata = run_opts.find_only_classified(traindata,preddata)
-
-filt_train_all= {}
+filt_train_all= {} # Set up arrays
 filt_predict_all = {}
 combs={}
-for j in range(len(settings.filters)):
-    n_filt=len(settings.filters[j])
-    filt_train=[]
-    for i in range(numpy.size(settings.filters[j])): # Create filter array (training set)
-        filt_train.append(traindata[settings.filters[j][i]])
+
+for j in range(len(settings.filters)): # For each filter set
+    n_filt=len(settings.filters[j]) # Get the number of filters
+    filt_train=[] # Set up filter array
+    for i in range(numpy.size(settings.filters[j])): # For each filter i in filter set j 
+        filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
     filt_train=numpy.transpose(filt_train)
     filt_predict=[]
-    for i in range(numpy.size(settings.filters[j])): # Create filter array (prediction set)
+    for i in range(numpy.size(settings.filters[j])): # Do same for prediction set
         filt_predict.append(preddata[settings.filters[j][i]])
     filt_predict=numpy.transpose(filt_predict)
     
-    # Section that calculates all possible colours
-    filt_train,filt_predict,combs[j] = run_opts.calculate_colours(filt_train,filt_predict,n_filt) 
-    # Section that checks use_colours and cuts colours accordingly
-    filt_train,filt_predict,n_colour = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt)
-    filt_train_all[j]=filt_train,n_filt,n_colour
+    filt_train,filt_predict,combs[j] = run_opts.calculate_colours(filt_train,filt_predict,n_filt) # Section that calculates all possible colours
+    filt_train,filt_predict,n_colour = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt) # Section that checks use_colours and cuts colours accordingly
+
+    filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
     filt_predict_all[j]=filt_predict,n_filt,n_colour
 
 n_filt=0
@@ -100,97 +93,93 @@ n_feat=n_filt+n_colours+n_oth # Number of total features
 logger.info('Number of filters: %s, Number of colours: %s, Number of other features: %s' %(n_filt,n_colours,n_oth))
 logger.info('Number of total features = %s + 1 target' %(n_feat))
     
-# Stack arrays.
+# Stack arrays to feed to MLA
 XX=numpy.array(filt_train_all[0][0])
-if len(filt_train_all) > 1:
+if len(filt_train_all) >= 1:
     for i in range(1,len(filt_train_all)):
         XX=numpy.column_stack((XX,numpy.array(filt_train_all[i][0])))
 for i in range(len(settings.othertrain)): # Tack on other training features (not mags, like redshift)
     XX = numpy.column_stack((XX,traindata[settings.othertrain[i]]))
-classnames_tr=traindata[settings.predict[:-3]]
-XX=numpy.column_stack((XX,traindata[settings.predict]))
+classnames_tr=traindata[settings.predict[:-3]] # Get classnames
+XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
 
 XXpredict=numpy.array(filt_predict_all[0][0])
 if len(filt_predict_all) > 1:
     for i in range(1,len(filt_predict_all)):
         XXpredict=numpy.column_stack((XXpredict,filt_predict_all[i][0]))
-for i in range(len(settings.othertrain)): # Tack on other prediction features
+for i in range(len(settings.othertrain)): # Tack on other prediction features (not mags, like redshift)
     XXpredict = numpy.column_stack((XXpredict,preddata[settings.othertrain[i]]))
 classnames_pr=preddata[settings.predict[:-3]]
-XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict]))
+XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
 XX,XXpredict,classnames_tr,classnames_pr = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,filtstats)
 
-XX,classnames_tr = run_opts.weightinput(XX,classnames_tr)
+XX,classnames_tr = run_opts.weightinput(XX,classnames_tr) # Weight training set? - specified in settings
 
-XX = XX[0:traindatanum]
+XX = XX[0:traindatanum] # Cut whole training array down to size specified in settings
 XXpredict=XXpredict[0:predictdatanum]
-classnames_tr=classnames_tr[0:traindatanum]
+classnames_tr=classnames_tr[0:traindatanum] # Do same for classnames
 classnames_pr=classnames_pr[0:predictdatanum]
 
 del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
-    
-#    wr_tr = csv.writer(tempcsv_tr)
-#    wr_pr = csv.writer(tempcsv_pr)
-#    wr_tr.writerow(XX)
-#    wr_pr.writerow(XXpredict)
 
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
 
-if settings.actually_run == 1:
+if settings.actually_run == 1: # If it is set to actually run in settings
     logger.info('Starting MLA run')
     logger.info('------------')
-    if settings.pyspark.on == 1:
-        from pyspark import SparkContext
-        from pyspark.sql import SQLContext
-        from pyspark.ml import Pipeline
+    if settings.pyspark.on == 1:                # Use pyspark or not? Pyspark makes cross node (HPC) calculation possible.
+        from pyspark import SparkContext        # It's slower, manages resources between nodes using HTTP. 
+        from pyspark.sql import SQLContext      # So far, it does not include feature importance outputs.
+        from pyspark.ml import Pipeline         # I would have to program feature importances myself. May be time consuming.
         from pyspark.ml.feature import VectorAssembler
         from pyspark.ml.classification import RandomForestClassifier
         from pyspark.ml.feature import StringIndexer, VectorIndexer
+        from pyspark.ml.evaluation import MulticlassClassificationEvaluator
         # pyspark go
         
-        if settings.pyspark.remake_csv == 1:
+        if settings.pyspark.remake_csv == 1: # Making the csv files for the pyspark MLA to read in is time consuming, turn off the file generation?
             logger.info('Remaking csvs for pysparks...')
             numpy.savetxt(temp_train, XX, delimiter=",")
             logger.info('Training csv saved')
             numpy.savetxt(temp_pred, XXpredict, delimiter=",")
             logger.info('Predict csv saved')
-        sc = SparkContext(appName="ML_RF")
+        sc = SparkContext(appName="ML_RF") # Initiate spark
         
-        sclogger=sc._jvm.org.apache.log4j
+        sclogger=sc._jvm.org.apache.log4j # Initiate spark logging
         sclogger.LogManager.getLogger("org").setLevel(sclogger.Level.ERROR)
         sclogger.LogManager.getLogger("akka").setLevel(sclogger.Level.ERROR)
         sqlContext=SQLContext(sc)
-        
+        # Read in data
         data_tr = sqlContext.read.format("com.databricks.spark.csv").options(header='false',inferSchema='true').load(temp_train)
         data_pr = sqlContext.read.format("com.databricks.spark.csv").options(header='false',inferSchema='true').load(temp_pred)
-        data_tr=data_tr.withColumnRenamed(data_tr.columns[-1],"label")
+        data_tr=data_tr.withColumnRenamed(data_tr.columns[-1],"label") # rename last column (answers), to label
         data_pr=data_pr.withColumnRenamed(data_pr.columns[-1],"label")
         
         assembler=VectorAssembler(inputCols=data_tr.columns[:-1],outputCol="features")
-        reduced=assembler.transform(data_tr.select('*'))
+        reduced=assembler.transform(data_tr.select('*')) # Assemble feature vectos for spark MLA
         
         assembler_pr=VectorAssembler(inputCols=data_pr.columns[:-1],outputCol="features")
         reduced_pr=assembler_pr.transform(data_pr.select('*'))
         
-        labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(reduced)        
+        labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(reduced) # Index vectors        
         featureIndexer =VectorIndexer(inputCol="features", outputCol="indexedFeatures").fit(reduced)
-        
+        # Initiate MLA alg
         rf = RandomForestClassifier(labelCol="indexedLabel", featuresCol="indexedFeatures",numTrees=100,maxDepth=5,maxBins=200)
         
-        pipeline = Pipeline(stages=[labelIndexer, featureIndexer, rf])
+        pipeline = Pipeline(stages=[labelIndexer, featureIndexer, rf]) # Set up fitting pipeline
         start, end=[],[] # Timer
         logger.info('Fit start')
         logger.info('------------')
         start = time.time()
-        model=pipeline.fit(reduced)
+        model=pipeline.fit(reduced) # Fit
         end = time.time()
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')
@@ -198,14 +187,13 @@ if settings.actually_run == 1:
         logger.info('Predict start')
         logger.info('------------')
         start = time.time()
-        predictions = model.transform(reduced_pr)
-        from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+        predictions = model.transform(reduced_pr) # Predict
         evaluator = MulticlassClassificationEvaluator(labelCol="indexedLabel",predictionCol="prediction",metricName="precision")
         accuracy = evaluator.evaluate(predictions)
         logger.info("Test Error = %g" %(1.0-accuracy))
         logger.info('------------')
         logger.info('Pulling results ...')
-        yypredict=numpy.array(predictions.select("indexedLabel").collect())
+        yypredict=numpy.array(predictions.select("indexedLabel").collect()) # Pulls all results into numpy arrays to continue program
         yypredict=yypredict[:,0]
         result=numpy.array(predictions.select("prediction").collect())
         result=result[:,0]
@@ -214,13 +202,12 @@ if settings.actually_run == 1:
         probs=numpy.array(predictions.select("probability").collect())
         probs=probs[:,0]
         XXpredict=numpy.column_stack((XXpredict,yypredict))
-#        resultsstack=numpy.array(predictions.select("indexedFeatures","indexedLabel","prediction","probability").collect())
         end=time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
     
     else:
-     # Run MLA switch
+     # Run sklearn MLA switch
         clf = settings.MLA # Pulls in machine learning algorithm from settings
         logger.info('MLA settings') 
         logger.info(clf)
@@ -229,7 +216,7 @@ if settings.actually_run == 1:
         logger.info('Fit start')
         logger.info('------------')
         start = time.time()
-        clf = clf.fit(XX[:,0:n_feat],yy) # XX is train array
+        clf = clf.fit(XX[:,0:n_feat],yy) # XX is train array, yy is training answers
         end = time.time()
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')

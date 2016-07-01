@@ -8,8 +8,8 @@ def get_function(function_string):
     return function
 
 # PROGRAM OPTIONS
-programpath='/users/moricex/ML_RF/'                                     # Root path to program 
-trainpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'                     # Input training data
+programpath='/users/moricex/ML_RF/'                                     	# Root path to program 
+trainpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'       # Input training data
 predpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'   
                  # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
@@ -18,12 +18,12 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=[]#['SPECZ']                                                     # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-pyspark.on=1
-pyspark.remake_csv=0
+pyspark.on=1																# Use pyspark instead of sklearn
+pyspark.remake_csv=0														# Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
 saveresults=0                                                               # Save results or not?
 outfile = 'ML_RF_results.txt'                                               # Filename for results
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
-logfile_out='ML_RF_logfile.txt'
+logfile_out='ML_RF_logfile.txt'												# Name of output logfile
 
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
@@ -32,7 +32,7 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = get_function('sklearn.ensemble.RandomForestClassifier')               # Which MLA to load
-MLA = MLA(n_estimators=500,n_jobs=16,bootstrap=True,verbose=True)             # MLA settings
+MLA = MLA(n_estimators=500,n_jobs=16,bootstrap=True,verbose=True)           # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
@@ -47,6 +47,6 @@ calculate_colours=1                                                         # Gi
 use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
-plotsubclasshist=0                                                          # for subclass, not class
-plotbandvprob=0
-plotcolourvprob=0                                                           # for class, not subclass
+plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
+plotbandvprob=0																# Plot hist of filter band vs prob for each class
+plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
