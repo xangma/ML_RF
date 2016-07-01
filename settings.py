@@ -8,9 +8,9 @@ def get_function(function_string):
     return function
 
 # PROGRAM OPTIONS
-programpath='/users/moricex/ML/v1.0.4/'                                     # Root path to program 
-trainpath='../specPhotoDR12v3_hoyleb_extcorr_train.fit'                     # Input training data
-predpath='../specPhotoDR12v3_hoyleb_extcorr_predict.fit'   
+programpath='/users/moricex/ML_RF/'                                     # Root path to program 
+trainpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'                     # Input training data
+predpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'   
                  # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
@@ -18,10 +18,13 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=[]#['SPECZ']                                                     # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
+pyspark.on=1
+pyspark.remake_csv=0
 saveresults=0                                                               # Save results or not?
 outfile = 'ML_RF_results.txt'                                               # Filename for results
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
 logfile_out='ML_RF_logfile.txt'
+
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
@@ -29,7 +32,7 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = get_function('sklearn.ensemble.RandomForestClassifier')               # Which MLA to load
-MLA = MLA(n_estimators=50,n_jobs=6,bootstrap=True,verbose=True)             # MLA settings
+MLA = MLA(n_estimators=500,n_jobs=16,bootstrap=True,verbose=True)             # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
