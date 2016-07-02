@@ -12,7 +12,7 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
-def checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,filtstats):
+def checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,filtstats):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
         checkmagspos_log=logging.getLogger('checkmagspos')
@@ -34,12 +34,17 @@ def checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,filtstats):
             
             XX = XX[XX_neg_index]
             XXpredict = XXpredict[XXpred_neg_index]
+            
             classnames_tr=classnames_tr[XX_neg_index]
             classnames_pr=classnames_pr[XXpred_neg_index]
-            
-        return XX,XXpredict,classnames_tr,classnames_pr
+            subclass_tr = subclass_tr[XX_neg_index]
+            subclass_names_tr=subclass_names_tr[XX_neg_index]
+            subclass_pr=subclass_pr[XXpred_neg_index]
+            subclass_names_pr=subclass_names_pr[XXpred_neg_index]
+
+        return XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr
     else:
-        return XX,XXpredict,classnames_tr,classnames_pr
+        return XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr
 
 def weightinput(XX,classnames_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
     if len(settings.weightinput) > 0:
