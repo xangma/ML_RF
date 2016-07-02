@@ -15,11 +15,13 @@ predpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
-othertrain=[]#['SPECZ']                                                     # Other features to give the MLA
+othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                                     # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-pyspark.on=1																# Use pyspark instead of sklearn
-pyspark.remake_csv=0														# Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
+double_sub_run = 1
+
+pyspark_on=0																# Use pyspark instead of sklearn
+pyspark_remake_csv=0														# Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
 saveresults=0                                                               # Save results or not?
 outfile = 'ML_RF_results.txt'                                               # Filename for results
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
@@ -32,12 +34,12 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = get_function('sklearn.ensemble.RandomForestClassifier')               # Which MLA to load
-MLA = MLA(n_estimators=500,n_jobs=16,bootstrap=True,verbose=True)           # MLA settings
+MLA = MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True)           # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
-find_only_classified=0                                                      # MUST RESET PYTHON IF CHANGED
+find_only_classified=1                                                      # MUST RESET PYTHON IF CHANGED
 find_all_classes=0                                                          # Finds all subclasses and stores them in a variable
 
 calculate_colours=1                                                         # Give MLA colours?

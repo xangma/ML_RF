@@ -101,6 +101,8 @@ if len(filt_train_all) >= 1:
 for i in range(len(settings.othertrain)): # Tack on other training features (not mags, like redshift)
     XX = numpy.column_stack((XX,traindata[settings.othertrain[i]]))
 classnames_tr=traindata[settings.predict[:-3]] # Get classnames
+subclass_tr=traindata['SPEC_SUBCLASS_ID']
+subclass_names_tr=traindata['SPEC_SUBCLASS']
 XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
 
 XXpredict=numpy.array(filt_predict_all[0][0])
@@ -110,11 +112,14 @@ if len(filt_predict_all) > 1:
 for i in range(len(settings.othertrain)): # Tack on other prediction features (not mags, like redshift)
     XXpredict = numpy.column_stack((XXpredict,preddata[settings.othertrain[i]]))
 classnames_pr=preddata[settings.predict[:-3]]
+subclass_pr = preddata['SPEC_SUBCLASS_ID']
+subclass_names_pr = preddata['SPEC_SUBCLASS']
 XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
-XX,XXpredict,classnames_tr,classnames_pr = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,filtstats)
+XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr\
+ = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,filtstats)
 
 XX,classnames_tr = run_opts.weightinput(XX,classnames_tr) # Weight training set? - specified in settings
 
@@ -122,6 +127,12 @@ XX = XX[0:traindatanum] # Cut whole training array down to size specified in set
 XXpredict=XXpredict[0:predictdatanum]
 classnames_tr=classnames_tr[0:traindatanum] # Do same for classnames
 classnames_pr=classnames_pr[0:predictdatanum]
+
+# Cuts for doublesubrun
+subclass_tr = subclass_tr[0:traindatanum]
+subclass_names_tr = subclass_names_tr[0:traindatanum]
+subclass_pr = subclass_pr[0:predictdatanum]
+subclass_names_pr = subclass_names_pr[0:predictdatanum]
 
 del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
 
@@ -131,11 +142,10 @@ run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inp
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
-
-if settings.actually_run == 1: # If it is set to actually run in settings
+def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     logger.info('Starting MLA run')
     logger.info('------------')
-    if settings.pyspark.on == 1:                # Use pyspark or not? Pyspark makes cross node (HPC) calculation possible.
+    if settings.pyspark_on == 1:                # Use pyspark or not? Pyspark makes cross node (HPC) calculation possible.
         from pyspark import SparkContext        # It's slower, manages resources between nodes using HTTP. 
         from pyspark.sql import SQLContext      # So far, it does not include feature importance outputs.
         from pyspark.ml import Pipeline         # I would have to program feature importances myself. May be time consuming.
@@ -145,7 +155,7 @@ if settings.actually_run == 1: # If it is set to actually run in settings
         from pyspark.ml.evaluation import MulticlassClassificationEvaluator
         # pyspark go
         
-        if settings.pyspark.remake_csv == 1: # Making the csv files for the pyspark MLA to read in is time consuming, turn off the file generation?
+        if settings.pyspark_remake_csv == 1: # Making the csv files for the pyspark MLA to read in is time consuming, turn off the file generation?
             logger.info('Remaking csvs for pysparks...')
             numpy.savetxt(temp_train, XX, delimiter=",")
             logger.info('Training csv saved')
@@ -241,6 +251,7 @@ if settings.actually_run == 1: # If it is set to actually run in settings
     resultsstack = numpy.column_stack((XXpredict,result,probs)) # Compile results into table
     
     run_opts.diagnostics([result,yypredict,unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr],'result')
+    return result
     # SAVE
     if settings.saveresults == 1:
         logger.info('Saving results')
@@ -253,5 +264,19 @@ if settings.actually_run == 1: # If it is set to actually run in settings
     plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
     plots.plot_bandvprob(resultsstack,filtstats,probs.shape[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,probs.shape[1],combs) # Plot colour vs probability
+
+if settings.actually_run == 1:# If it is set to actually run in settings
+    result=run_MLA(XX,XXpredict,yy,yypredict,n_feat)
+
+if settings.double_sub_run == 1:
+    XX = numpy.column_stack((XX,subclass_tr))
+    XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
+    n_feat=n_feat+1
+    yy=subclass_tr
+    yypredict=subclass_pr
+    logger.info('Starting *SECOND* MLA run')
+    unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
+    run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
+    result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
 
 logger.removeHandler(console)
