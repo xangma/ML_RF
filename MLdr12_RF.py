@@ -14,8 +14,8 @@ import time
 import plots
 import logging
 
-temp_train='/users/moricex/ML_RF/temp_train.csv' # Define temp files for pyspark
-temp_pred='/users/moricex/ML_RF/temp_pred.csv'
+temp_train='./temp_train.csv' # Define temp files for pyspark
+temp_pred='./temp_pred.csv'
 
 os.chdir(settings.programpath) # Change directory
 cwd=os.getcwd()
@@ -52,6 +52,8 @@ if 'clf' in locals(): # Clear the last fit if there was one
 
 logger.info('Program start')
 logger.info('------------')
+logger.info('CWD is %s' %cwd)
+logger.info(settings.programpath)
 logger.info('Loading data for preprocessing')
 logger.info('------------')
 

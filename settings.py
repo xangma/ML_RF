@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-# PROGRAM OPTIONS
-programpath='/users/moricex/ML_RF/'                                     	# Root path to program 
-trainpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'       # Input training data
-predpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'   
-                 # Input prediction data
+#[PROGRAM OPTIONS]
+programpath='/users/moricex/ML_RF/'                                         # Root path to program 
+trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'       # Input training data
+predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'      # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
-othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                                     # Other features to give the MLA
+othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 double_sub_run = 0
 
-pyspark_on=0																# Use pyspark instead of sklearn
-pyspark_remake_csv=0														# Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
-saveresults=0                                                               # Save results or not?
+pyspark_on=0								    # Use pyspark instead of sklearn
+pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
+saveresults=1                                                               # Save results or not?               
+                                     
 outfile = 'ML_RF_results.txt'                                               # Filename for results
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
-logfile_out='ML_RF_logfile.txt'												# Name of output logfile
+logfile_out='ML_RF_logfile.txt'						    # Name of output logfile
 
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
@@ -25,7 +25,7 @@ weightinput=[]#[34,33,33]                                                   # We
 
 diagnostics=1
 # MLA settings
-MLA = 'sklearn.ensemble.RandomForestClassifier'               # Which MLA to load
+MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 100, 'n_jobs': 16,'bootstrap':True,'verbose':True}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
@@ -42,5 +42,5 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob=0																# Plot hist of filter band vs prob for each class
+plotbandvprob=0								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
