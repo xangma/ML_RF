@@ -1,12 +1,4 @@
 # -*- coding: utf-8 -*-
-
-def get_function(function_string):
-    import importlib
-    module, function = function_string.rsplit('.', 1)
-    module = importlib.import_module(module)
-    function = getattr(module, function)
-    return function
-
 # PROGRAM OPTIONS
 programpath='/users/moricex/ML_RF/'                                     	# Root path to program 
 trainpath='../DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'       # Input training data
@@ -18,7 +10,7 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                                     # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-double_sub_run = 1
+double_sub_run = 0
 
 pyspark_on=0																# Use pyspark instead of sklearn
 pyspark_remake_csv=0														# Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -33,13 +25,13 @@ weightinput=[]#[34,33,33]                                                   # We
 
 diagnostics=1
 # MLA settings
-MLA = get_function('sklearn.ensemble.RandomForestClassifier')               # Which MLA to load
-MLA = MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True)           # MLA settings
+MLA = 'sklearn.ensemble.RandomForestClassifier'               # Which MLA to load
+MLAset = {'n_estimators': 100, 'n_jobs': 16,'bootstrap':True,'verbose':True}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
-find_only_classified=1                                                      # MUST RESET PYTHON IF CHANGED
+find_only_classified=0                                                      # MUST RESET PYTHON IF CHANGED
 find_all_classes=0                                                          # Finds all subclasses and stores them in a variable
 
 calculate_colours=1                                                         # Give MLA colours?

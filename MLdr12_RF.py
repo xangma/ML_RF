@@ -37,6 +37,13 @@ logger.addHandler(console)
 if 'plots' not in dirs: # Create plots directory  if it doesn't exist
     os.mkdir('plots')
 
+def get_function(function_string):
+    import importlib
+    module, function = function_string.rsplit('.', 1)
+    module = importlib.import_module(module)
+    function = getattr(module, function)
+    return function
+
 traindatanum=settings.traindatanum # Number to train and predict
 predictdatanum=settings.predictdatanum
 
@@ -218,7 +225,8 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     
     else:
      # Run sklearn MLA switch
-        clf = settings.MLA # Pulls in machine learning algorithm from settings
+        MLA = get_function(settings.MLA) # Pulls in machine learning algorithm from settings
+        clf = MLA().set_params(**settings.MLAset)
         logger.info('MLA settings') 
         logger.info(clf)
         logger.info('------------')    
@@ -277,6 +285,7 @@ if settings.double_sub_run == 1:
     logger.info('Starting *SECOND* MLA run')
     unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
     run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
+    settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
     result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
 
 logger.removeHandler(console)
