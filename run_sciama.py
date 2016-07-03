@@ -26,7 +26,7 @@ n_train=[50,100,500,1000,2500,5000,10000,25000,50000]
 timestr = time.strftime("%Y%m%d-%H%M%S")
 for j in range(0,len(n_train)):
     for i in range(0,len(n_estimators)):
-        run_namewo='RUN_'+timestr+'n_est_'+str(n_estimators[i])+'_n-tr_'+str(n_train[j])#+'max_feat_None' 
+        run_namewo='RUN_'+timestr+'_n_est_'+str(n_estimators[i])+'_n-tr_'+str(n_train[j])#+'max_feat_None' 
         run_name = '/'+run_namewo+'/'
         
         fullpath=programpath+'runresults'+run_name
@@ -50,6 +50,10 @@ for j in range(0,len(n_train)):
             set_file.write("\n")
             set_file.write("\nMLAset = {'n_estimators': %s, 'n_jobs': 4,'bootstrap':True,'verbose':True}"%n_estimators[i])
             set_file.write("\ntraindatanum=%s"%n_train[j])
+            set_file.write("\nfeat_outfile = 'ML_RF_feat_%s.txt'" %run_namewo)
+            set_file.write("\nresult_outfile = 'ML_RF_results_%s.txt'" %run_namewo)
+            set_file.write("\nprob_outfile = 'ML_RF_probs_%s.txt'" %run_namewo)
+            set_file.write("\nlogfile_out='ML_RF_logfile_%s.txt'" %run_namewo)
         
         dirs_run=os.listdir(fullpath)
         runfull=fullpath+'MLdr12_RF.py'
