@@ -13,10 +13,13 @@ double_sub_run = 0
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
-saveresults=1                                                               # Save results or not?               
-                                     
-outfile = 'ML_RF_results.txt'                                               # Filename for results
+
+saveresults=1                                                               # Save results or not? 
+resultsstack_save=0                                                         # Save all results? WARNING: Very large table (>1gb probably)                                                         
+outfile = 'ML_RF_resultsstack.txt'                                          # Filename for results
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
+result_outfile = 'ML_RF_results.txt'
+prob_outfile = 'ML_RF_probs.txt'
 logfile_out='ML_RF_logfile.txt'						    # Name of output logfile
 
 traindatanum=10000                                                          # Number of objects to train on
@@ -26,7 +29,7 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 100, 'n_jobs': 16,'bootstrap':True,'verbose':True}         # MLA settings
+MLAset = {'n_estimators': 1024, 'n_jobs': 4,'bootstrap':True,'verbose':True}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
