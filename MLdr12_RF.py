@@ -53,7 +53,6 @@ if 'clf' in locals(): # Clear the last fit if there was one
 logger.info('Program start')
 logger.info('------------')
 logger.info('CWD is %s' %cwd)
-logger.info(settings.programpath)
 logger.info('Loading data for preprocessing')
 logger.info('------------')
 
@@ -242,12 +241,24 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
         logger.info('------------')
         
         start, end=[],[]
+        # Split cats for RAM management
+        numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))
+        if numcats < 1:
+            numcats = 1
         logger.info('Predict start')
         logger.info('------------')
         start = time.time()
-        result = clf.predict(XXpredict[:,0:n_feat]) # XX is predict array.
-        probs = clf.predict_proba(XXpredict[:,0:n_feat]) # Only take from 0:n_feat because answers are tacked on end
+        result,probs=[],[]
+        XXpredict_cats=numpy.array_split(XXpredict,numcats)
+        logger.info('Splitting predict array into %s' %numcats)
+        logger.info('------------')
+        for i in range(len(XXpredict_cats)):
+            logger.info('Predicting cat %s/%s' %(i,len(XXpredict_cats)))
+            result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
+            probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
         feat_importance = clf.feature_importances_
+        result=numpy.float32(result)
+        probs==numpy.float32(probs)
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
@@ -261,12 +272,14 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     resultsstack = numpy.column_stack((XXpredict,result,probs)) # Compile results into table
     
     run_opts.diagnostics([result,yypredict,unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr],'result')
-    return result
     # SAVE
     if settings.saveresults == 1:
         logger.info('Saving results')
         logger.info('------------')
-        numpy.savetxt(settings.outfile,resultsstack)
+        if settings.resultsstack_save == 1:
+            numpy.savetxt(settings.outfile,resultsstack)
+        numpy.savetxt(settings.result_outfile,numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
+        numpy.savetxt(settings.prob_outfile,probs)
         numpy.savetxt(settings.feat_outfile,feat_importance)
     
     # PLOTS
@@ -274,6 +287,8 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
     plots.plot_bandvprob(resultsstack,filtstats,probs.shape[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,probs.shape[1],combs) # Plot colour vs probability
+    
+    return result
 
 if settings.actually_run == 1:# If it is set to actually run in settings
     result=run_MLA(XX,XXpredict,yy,yypredict,n_feat)
