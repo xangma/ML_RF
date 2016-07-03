@@ -17,7 +17,7 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
 
 
 3/7/16
-- Added run_sciama.py. This so far creates a folder structure, copies up the code, and submits it to sciama. It needs to be iterated to submit multiple jobs.
+- Added run_sciama.py. This so far creates a folder structure, copies up the code, and submits it to sciama. It is iterated to submit multiple jobs.
 
 2/7/16
 - Added 'double_sub_run' in settings. If set to do CLASS separation (star/gal/QSO), this function then uses the predicted results of the CLASS run, appends them to the training data, then tries to predict subclass. Don't really know how useful this will be, but it's fun to include it. Shall investigate further when pipeline to sciama is finished.
