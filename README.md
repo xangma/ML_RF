@@ -19,6 +19,9 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
 3/7/16
 - Added run_sciama.py. This so far creates a folder structure, copies up the code, and submits it to sciama. It needs to be iterated to submit multiple jobs.
 
+2/7/16
+- Added 'double_sub_run' in settings. If set to do CLASS separation (star/gal/QSO), this function then uses the predicted results of the CLASS run, appends them to the training data, then tries to predict subclass. Don't really know how useful this will be, but it's fun to include it. Shall investigate further when pipeline to sciama is finished.
+
 30/6/16
  - Added pyspark functionality. Upon running this on an HPC cluster, I saw that sharing resources across nodes is difficult. Pyspark allows this to happen. Unfortunately, there is no way (none that I could see anyway in the current code), of assessing feature importances. It is for this reason I will be pausing development of the pyspark section of the code ... the other option would be to code it myself. I feel this wouldn't be the best use of my time, considering others on the pyspark team seem to be working on this.
  
