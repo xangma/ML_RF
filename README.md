@@ -35,3 +35,4 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
 - Add other (all) features.
 - Create plots of all these runs, which will give me a view on how the program performs.
 - Focus on representing feature importances (using sklearn) from multiple runs.
+- Investigate feature importance as a function of redshift?
