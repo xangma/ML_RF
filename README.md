@@ -3,16 +3,16 @@ Machine Learning Random Forest Classification for DR12.
 
 This code performs star/galaxy/QSO separation using a training set with known targets.
 
-MLdr12_RF.py 
+####MLdr12_RF.py 
 This is the main file. Run this to start program.
 
-plots.py 
+####plots.py 
 This deals with plots (enabled in settings.py)
 
-run_opts.py 
+####run_opts.py 
 These are optional functions that the main code dips out to. Most can be enabled or disabled in settings.py
 
-settings.py
+####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
 6/7/16
