@@ -16,7 +16,8 @@ These are optional functions that the main code dips out to. Most can be enabled
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
 6/7/16
--Added run_sciama_plots.py. This uses the outputs of run_sciama.py (reading the directory structure) and allows the program to:
+
+- Added run_sciama_plots.py. This uses the outputs of run_sciama.py (reading the directory structure) and allows the program to:
  - Create plots of multiple runs, which will give me a view on how the program performs (scaling through number of training objects and number of trees/estimators).
  - Obtain a (crude) representation of feature importances (using sklearn) from multiple runs.
 
