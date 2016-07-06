@@ -7,25 +7,24 @@ Created on Sun Jul  3 12:58:37 2016
 
 import os
 import numpy
-import sys
 from settings import *
 import shutil
 from subprocess import Popen, PIPE
-
 import time
 
 #os.chdir(programpath) # Change directory
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
-# CREATE DIRECTORIES AND COPY CODE UP
-
+# Variables to iterate through
 n_estimators=numpy.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192])
 n_train=numpy.array([50,100,500,1000,2500,5000,10000,25000,50000])
 
+# CREATE DIRECTORIES AND COPY CODE UP
+
 timestr = time.strftime("%Y%m%d-%H%M%S")
 os.chdir(programpath+'runresults')
-numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_train=n_train)
+numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_train=n_train,filters=filters,use_colours=use_colours)
 for j in range(0,len(n_train)):
     for i in range(0,len(n_estimators)):
         run_namewo='RUN_'+timestr+'_n_est_'+str(n_estimators[i])+'_n-tr_'+str(n_train[j])#+'max_feat_None' 
@@ -68,7 +67,7 @@ for j in range(0,len(n_train)):
         # Customize your options here
         job_name = "ML_RF_sciamajob_%s" %run_namewo
         walltime = "1:00:00"
-        processors = "nodes=1:ppn=10"
+        processors = "nodes=1:ppn=4"
         command = "python MLdr12_RF.py"
          
         job_string = """#!/bin/bash
