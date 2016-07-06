@@ -24,7 +24,7 @@ dirs=os.listdir(cwd)
 logging.basicConfig(level=logging.INFO,\
                     format='%(asctime)s %(name)-20s %(levelname)-6s %(message)s',\
                     datefmt='%d-%m-%y %H:%M',\
-                    filename=settings.logfile_out,\
+                    filename=settings.log_outfile,\
                     filemode='w')
 # define a Handler which writes INFO messages or higher to the sys.stderr
 console = logging.StreamHandler()
@@ -242,7 +242,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
         
         start, end=[],[]
         # Split cats for RAM management
-        numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))
+        numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))*10
         if numcats < 1:
             numcats = 1
         logger.info('Predict start')
@@ -268,10 +268,12 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     logger.info('%s / %s were correct' %(n,predictdatanum))
     logger.info('That''s %s percent' %((n/predictdatanum)*100))
     logger.info('------------')
-    
+    percentage=(n/predictdatanum)*100
     resultsstack = numpy.column_stack((XXpredict,result,probs)) # Compile results into table
     
     run_opts.diagnostics([result,yypredict,unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr],'result')
+    stats=numpy.array([])
+    stats=numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage)
     # SAVE
     if settings.saveresults == 1:
         logger.info('Saving results')
@@ -281,6 +283,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
         numpy.savetxt(settings.result_outfile,numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
         numpy.savetxt(settings.prob_outfile,probs)
         numpy.savetxt(settings.feat_outfile,feat_importance)
+        numpy.savetxt(settings.stats_outfile,numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage)),header="n_est,traindatanum,predictdatanum,percentage")
     
     # PLOTS
     logger.info('Plotting ...')

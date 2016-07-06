@@ -20,7 +20,8 @@ outfile = 'ML_RF_resultsstack.txt'                                          # Fi
 feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
 result_outfile = 'ML_RF_results.txt'
 prob_outfile = 'ML_RF_probs.txt'
-logfile_out='ML_RF_logfile.txt'						    # Name of output logfile
+log_outfile='ML_RF_logfile.txt'						    # Name of output logfile
+stats_outfile='ML_RF_stats.txt'
 
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
