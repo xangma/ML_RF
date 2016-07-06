@@ -7,23 +7,24 @@ Created on Sun Jul  3 12:58:37 2016
 
 import os
 import numpy
-import sys
 from settings import *
 import shutil
 from subprocess import Popen, PIPE
-
 import time
 
 #os.chdir(programpath) # Change directory
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
+# Variables to iterate through
+n_estimators=numpy.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192])
+n_train=numpy.array([50,100,500,1000,2500,5000,10000,25000,50000])
+
 # CREATE DIRECTORIES AND COPY CODE UP
 
-n_estimators=[2,4,8,16,32,64,128,256,512,1024,2048,4096,8192]
-n_train=[50,100,500,1000,2500,5000,10000,25000,50000]
-
 timestr = time.strftime("%Y%m%d-%H%M%S")
+os.chdir(programpath+'runresults')
+numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_train=n_train,filters=filters,use_colours=use_colours)
 for j in range(0,len(n_train)):
     for i in range(0,len(n_estimators)):
         run_namewo='RUN_'+timestr+'_n_est_'+str(n_estimators[i])+'_n-tr_'+str(n_train[j])#+'max_feat_None' 
@@ -53,14 +54,15 @@ for j in range(0,len(n_train)):
             set_file.write("\nfeat_outfile = 'ML_RF_feat_%s.txt'" %run_namewo)
             set_file.write("\nresult_outfile = 'ML_RF_results_%s.txt'" %run_namewo)
             set_file.write("\nprob_outfile = 'ML_RF_probs_%s.txt'" %run_namewo)
-            set_file.write("\nlogfile_out='ML_RF_logfile_%s.txt'" %run_namewo)
+            set_file.write("\nlog_outfile='ML_RF_log_%s.txt'" %run_namewo)
+            set_file.write("\nstats_outfile='ML_RF_stats_%s.txt'" %run_namewo)
         
         dirs_run=os.listdir(fullpath)
         runfull=fullpath+'MLdr12_RF.py'
         
         # Open a pipe to the qsub command.
         p = Popen(["qsub"],stdin=PIPE, stdout=PIPE, close_fds=True,universal_newlines=True)
-        output, input = p.stdout, p.stdin
+#        output, input = p.stdout, p.stdin
          
         # Customize your options here
         job_name = "ML_RF_sciamajob_%s" %run_namewo
@@ -69,7 +71,7 @@ for j in range(0,len(n_train)):
         command = "python MLdr12_RF.py"
          
         job_string = """#!/bin/bash
-        #PBS -N %s
+        #PBS -N %s_numcat*10
         #PBS -l walltime=%s
         #PBS -l %s
         #PBS -j oe
@@ -86,6 +88,4 @@ for j in range(0,len(n_train)):
         print(job_string)
         print(out)
          
-        #    time.sleep(0.1)
-        
-        #exec(open(runfull).read())
+        time.sleep(1)

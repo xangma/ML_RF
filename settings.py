@@ -17,10 +17,11 @@ pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the 
 saveresults=1                                                               # Save results or not? 
 resultsstack_save=0                                                         # Save all results? WARNING: Very large table (>1gb probably)                                                         
 outfile = 'ML_RF_resultsstack.txt'                                          # Filename for results
-feat_outfile = 'ML_RF_feat_importance.txt'                                  # Filename for feature importance results
+feat_outfile = 'ML_RF_feat_.txt'                                  # Filename for feature importance results
 result_outfile = 'ML_RF_results.txt'
 prob_outfile = 'ML_RF_probs.txt'
-logfile_out='ML_RF_logfile.txt'						    # Name of output logfile
+log_outfile='ML_RF_logfile.txt'						    # Name of output logfile
+stats_outfile='ML_RF_stats.txt'
 
 traindatanum=10000                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
@@ -29,7 +30,7 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 1024, 'n_jobs': 4,'bootstrap':True,'verbose':True}         # MLA settings
+MLAset = {'n_estimators': 100, 'n_jobs': 4,'bootstrap':True,'verbose':True}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
@@ -45,5 +46,5 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob=0								    # Plot hist of filter band vs prob for each class
+plotbandvprob=1								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
