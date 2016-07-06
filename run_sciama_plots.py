@@ -57,21 +57,81 @@ for i in range(len(dirs_run)):
 os.chdir(runresults_path)
 
 # PLOTS START
-
-
 for i in range(len(unique_n_est)):
-    mask=n_estimators_arr==unique_n_est[i]
+#    print(unique_n_est[i])
+    mask=n_estimators_arr==unique_n_est[i] # KEEP EST CONSTANT
     sort= n_train_arr[mask].argsort()
+    feat_sub_arr={}
+    n_est_index=numpy.where(mask==True)
+    n_est_ind_sorted=n_est_index[0][sort]
+    for j in range(len(mask)):
+        if mask[j] == True:
+            feat_sub_arr[j]=feat_arr[j]
     plt.figure()
-    plt.scatter(n_train_arr[mask][sort],result_arr[mask][sort])
-    plt.plot(n_train_arr[mask][sort],result_arr[mask][sort])
+    for j in range(len(sort))[2:-2]:
+        plt.scatter(numpy.array(range(len(feat_arr[0])))+1,feat_sub_arr[n_est_ind_sorted[j]],s=2)
+        plt.plot(numpy.array(range(len(feat_arr[0])))+1,feat_sub_arr[n_est_ind_sorted[j]],label='n_train == %s' %n_train_arr[mask][sort][j])
+    plt.axvspan(5.5, 15.5, color='red', alpha=0.3)
+    plt.axvspan(20.5, 30.5, color='red', alpha=0.3)
+    plt.axvspan(35.5, 45.5, color='red', alpha=0.3)
+    plt.legend()
     plt.title('n_estimators == %s'%unique_n_est[i])
-    plt.xlabel('n_train')
-    plt.ylabel('success (%)')
-    plt.ylim(75,100)
-    plt.savefig('run_plots/'+run_name+'/n_train_vs_success_n_est_%s.png'%unique_n_est[i])
+    plt.xlabel('Features')
+    plt.ylabel('Feat_Importance')
+    plt.xlim(0.5,45.5)
+    plt.ylim(0,0.2)
+#    plt.xticks(numpy.array(range(len(feat_arr[0]))))
+    plt.minorticks_on()
+    plt.grid(alpha=0.4,which='both')
+    plt.savefig('run_plots/'+run_name+'/feat_imp_vs_value_n_est_%s.png'%unique_n_est[i])
+#    plt.show()
     plt.close()
 
+for i in range(len(unique_n_train)):
+#    print(unique_n_train[i])
+    mask=n_train_arr==unique_n_train[i] # KEEP EST CONSTANT
+    sort= n_estimators_arr[mask].argsort()
+    feat_sub_arr={}
+    n_train_index=numpy.where(mask==True)
+    n_train_ind_sorted=n_train_index[0][sort]
+    for j in range(len(mask)):
+        if mask[j] == True:
+            feat_sub_arr[j]=feat_arr[j]
+    plt.figure()
+    for j in range(len(sort))[5:-2]:
+        plt.scatter(numpy.array(range(len(feat_arr[0])))+1,feat_sub_arr[n_train_ind_sorted[j]],s=2)
+        plt.plot(numpy.array(range(len(feat_arr[0])))+1,feat_sub_arr[n_train_ind_sorted[j]],label='n_est == %s' %n_estimators_arr[mask][sort][j])
+    plt.axvspan(5.5, 15.5, color='red', alpha=0.3)
+    plt.axvspan(20.5, 30.5, color='red', alpha=0.3)
+    plt.axvspan(35.5, 45.5, color='red', alpha=0.3)
+    plt.legend()
+    plt.title('n_train == %s'%unique_n_train[i])
+    plt.xlabel('Features')
+    plt.ylabel('Feat_Importance')
+    plt.ylim(0,0.2)
+    plt.xlim(0.5,45.5)
+#    plt.xticks(numpy.array(range(len(feat_arr[0]))))
+    plt.minorticks_on()
+    plt.grid(alpha=0.4,which='both')
+    plt.savefig('run_plots/'+run_name+'/feat_imp_vs_value_n_train_%s.png'%unique_n_train[i])
+#    plt.show()
+    plt.close()
+
+## Individual n_train vs success
+#for i in range(len(unique_n_est)):
+#    mask=n_estimators_arr==unique_n_est[i]
+#    sort= n_train_arr[mask].argsort()
+#    plt.figure()
+#    plt.scatter(n_train_arr[mask][sort],result_arr[mask][sort])
+#    plt.plot(n_train_arr[mask][sort],result_arr[mask][sort])
+#    plt.title('n_estimators == %s'%unique_n_est[i])
+#    plt.xlabel('n_train')
+#    plt.ylabel('success (%)')
+#    plt.ylim(75,100)
+#    plt.savefig('run_plots/'+run_name+'/n_train_vs_success_n_est_%s.png'%unique_n_est[i])
+#    plt.close()
+
+# Total n_train vs success
 plt.figure()
 for i in range(len(unique_n_est))[:-3]:
     mask=n_estimators_arr==unique_n_est[i]
@@ -82,24 +142,28 @@ plt.legend(loc=4)
 plt.title('n_estimators')
 plt.xlabel('n_train')
 plt.ylabel('success (%)')
+plt.xscale('log')
 plt.ylim(75,100)
-plt.show()
+#plt.show()
+plt.grid(False)
 plt.savefig('run_plots/'+run_name+'/n_train_vs_success_n_est_total.png')
 plt.close()
 
-for i in range(len(unique_n_train)):
-    mask=n_train_arr==unique_n_train[i]
-    sort= n_estimators_arr[mask].argsort()
-    plt.figure()
-    plt.scatter(n_estimators_arr[mask][sort],result_arr[mask][sort])
-    plt.plot(n_estimators_arr[mask][sort],result_arr[mask][sort])
-    plt.title('n_train == %s'%unique_n_train[i])
-    plt.xlabel('n_estimators')
-    plt.ylabel('success (%)')
-    plt.ylim(75,100)
-    plt.savefig('run_plots/'+run_name+'/n_estimators_vs_success_n_train_%s.png'%unique_n_train[i])
-    plt.close()
+## Individual n_estimators vs n_train
+#for i in range(len(unique_n_train)):
+#    mask=n_train_arr==unique_n_train[i]
+#    sort= n_estimators_arr[mask].argsort()
+#    plt.figure()
+#    plt.scatter(n_estimators_arr[mask][sort],result_arr[mask][sort])
+#    plt.plot(n_estimators_arr[mask][sort],result_arr[mask][sort])
+#    plt.title('n_train == %s'%unique_n_train[i])
+#    plt.xlabel('n_estimators')
+#    plt.ylabel('success (%)')
+#    plt.ylim(75,100)
+#    plt.savefig('run_plots/'+run_name+'/n_estimators_vs_success_n_train_%s.png'%unique_n_train[i])
+#    plt.close()
 
+# Total n_estimatos vs n_train
 plt.figure()
 for i in range(len(unique_n_train))[2:]:
     mask=n_train_arr==unique_n_train[i]
@@ -110,7 +174,10 @@ plt.legend(loc=4)
 plt.title('n_train')
 plt.xlabel('n_estimators')
 plt.ylabel('success (%)')
+plt.xscale('log')
+plt.grid()
 plt.ylim(75,100)
-plt.show()
+#plt.show()
+plt.grid(False)
 plt.savefig('run_plots/'+run_name+'/n_estimators_vs_success_n_train_total.png')
 plt.close()
