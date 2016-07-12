@@ -331,4 +331,8 @@ if settings.double_sub_run == 1:
     settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
     result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
 
+#if settings.get_images == 1:
+# http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237665328775233596
+#    http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=175.925216040431&dec=31.0453910049606&scale=0.2&width=200&height=200&opt=G
+
 logger.removeHandler(console)
