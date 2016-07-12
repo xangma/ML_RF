@@ -150,6 +150,22 @@ run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inp
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
+if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
+    XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}
+    for i in range(len(unique_IDS_tr)):
+        yy_orig = yy
+        yypredict_orig = yypredict
+        yy_out = [99 if x!=unique_IDS_tr[i] else x for x in yy_orig]
+        yypredict_out = [99 if x!=unique_IDS_tr[i] else x for x in yypredict_orig]
+#        yy_orig=yy_orig[yy_orig != unique_IDS_tr[i]] = 99
+#        yypredict_orig[yypredict_orig != unique_IDS_tr[i]] = 99
+        XX_stack = numpy.column_stack((XX[:,:-1],yy_out))
+        XXpredict_stack = numpy.column_stack((XXpredict[:,:-1],yypredict_out))
+        XX_one_vs_all[i] = XX_stack
+        XXpredict_one_vs_all[i] = XXpredict_stack
+        yy_one_vs_all[i] = yy_orig
+        yypredict_one_vs_all[i] = yypredict_orig
+
 def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     logger.info('Starting MLA run')
     logger.info('------------')
@@ -291,10 +307,17 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
     
-    return result
+    return result,feat_importance
 
 if settings.actually_run == 1:# If it is set to actually run in settings
     result=run_MLA(XX,XXpredict,yy,yypredict,n_feat)
+
+if settings.one_vs_all == 1:
+    one_vs_all_results = {}
+    for i in range(len(unique_IDS_tr)):
+        result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],yy_one_vs_all[i],yypredict_one_vs_all[i],n_feat)
+        one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1]}
+    plots.plot_feat_per_class(one_vs_all_results)
 
 if settings.double_sub_run == 1:
     XX = numpy.column_stack((XX,subclass_tr))
