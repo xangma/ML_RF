@@ -10,6 +10,7 @@ othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                   # Ot
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 double_sub_run = 0
+one_vs_all = 1                                                              # WARNING. Takes as many runs as there are classes in training set
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -23,15 +24,15 @@ prob_outfile = 'ML_RF_probs.txt'
 log_outfile='ML_RF_logfile.txt'						    # Name of output logfile
 stats_outfile='ML_RF_stats.txt'
 
-traindatanum=10000                                                          # Number of objects to train on
+traindatanum=2500                                                          # Number of objects to train on
 predictdatanum=500000                                                       # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 100, 'n_jobs': 4,'bootstrap':True,'verbose':True}         # MLA settings
-actually_run=1                                                              # Actually run the MLA
+MLAset = {'n_estimators': 16, 'n_jobs': 4,'bootstrap':False,'verbose':True}         # MLA settings
+actually_run=0                                                              # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
@@ -46,5 +47,5 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob=1								    # Plot hist of filter band vs prob for each class
+plotbandvprob=0								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
