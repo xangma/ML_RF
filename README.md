@@ -15,6 +15,9 @@ These are optional functions that the main code dips out to. Most can be enabled
 ####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
+12/7/16
+- Added option to assess feature importances of each class compared to the others. Shows a crude plot.
+
 6/7/16
 
 - Added run_sciama_plots.py. This uses the outputs of run_sciama.py (reading the directory structure) and allows the program to:
@@ -36,7 +39,7 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
  
 # TO DO
 
-- Priority: Do a one class vs. all run for each class to get feature importances per class. After that's done, the most important feature per class (say, r-i colour) could be binned along the x-axis maybe? I have to think more about this bit ...
-- Add cross colours.
-- Add other (all) features.
-- Investigate feature importance as a function of redshift?
+- [x] Priority: Do a one class vs. all run for each class to get feature importances per class. After that's done, the most important feature per class (say, r-i colour) could be binned along the x-axis maybe? I have to think more about this bit ...
+- [ ] Add cross colours.
+- [ ] Add other (all) features.
+- [ ] Investigate feature importance as a function of redshift?
