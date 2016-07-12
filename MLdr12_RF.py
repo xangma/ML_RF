@@ -317,6 +317,7 @@ if settings.one_vs_all == 1:
     for i in range(len(unique_IDS_tr)):
         result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],yy_one_vs_all[i],yypredict_one_vs_all[i],n_feat)
         one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1]}
+    plots.plot_feat_per_class(one_vs_all_results)
 
 if settings.double_sub_run == 1:
     XX = numpy.column_stack((XX,subclass_tr))

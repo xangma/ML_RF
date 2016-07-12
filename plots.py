@@ -117,3 +117,23 @@ def plot_colourvprob(resultsstack,filtstats,probshape,combs): # Plots each colou
                     plt.close(fig)
                 bottom=bottom + filtstats[j][1] +filtstats[j][0]
             bottom=0
+
+def plot_feat_per_class(one_vs_all_results):
+    plt.figure()
+    for i in range(len(one_vs_all_results)):
+        plt.scatter(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],s=2)
+        plt.plot(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],label='class == %s' %one_vs_all_results[i]['class_ID'])
+    plt.axvspan(5.5, 15.5, color='red', alpha=0.3)
+    plt.axvspan(20.5, 30.5, color='red', alpha=0.3)
+    plt.axvspan(35.5, 45.5, color='red', alpha=0.3)
+    plt.legend()
+    plt.title('Feature importance per class')
+    plt.xlabel('Features')
+    plt.ylabel('Feat_Importance')
+    plt.xlim(0.5,45.5)
+    plt.ylim(0,0.2)
+#    plt.xticks(numpy.array(range(len(feat_arr[0]))))
+    plt.minorticks_on()
+    plt.grid(alpha=0.4,which='both')
+    plt.savefig('%sFeature_imp_per_class.png' %fullsavedir)
+    plt.close()
