@@ -39,7 +39,12 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
  
 # TO DO
 
-- [x] Priority: Do a one class vs. all run for each class to get feature importances per class. After that's done, the most important feature per class (say, r-i colour) could be binned along the x-axis maybe? I have to think more about this bit ...
 - [ ] Add cross colours.
 - [ ] Add other (all) features.
 - [ ] Investigate feature importance as a function of redshift?
+
+#### DONE
+- [x] Do a one class vs. all run for each class to get feature importances per class. After that's done, the most important feature per class (say, r-i colour) could be binned along the x-axis maybe? I have to think more about this bit ...
+- [x] Create a way of submitting jobs to the HPC cluster where I can iterate through settings.
+- [x] Create plots of all these runs, which will give me a view on how the program performs.
+- [x] Focus on representing feature importances (using sklearn) from multiple runs.
