@@ -36,6 +36,7 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
  
 # TO DO
 
+- Priority: Do a one class vs. all run for each class to get feature importances per class. After that's done, the most important feature per class (say, r-i colour) could be binned along the x-axis maybe? I have to think more about this bit ...
 - Add cross colours.
 - Add other (all) features.
 - Investigate feature importance as a function of redshift?
