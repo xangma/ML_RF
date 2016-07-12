@@ -39,6 +39,7 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
  
 # TO DO
 
+- [ ] Find a selection of all types of results - great results where the MLA is certain, borderline results where the MLA can't decide, and really awful results where the MLA has gotten it completely wrong. Find the obj_IDs and find images of them on skyserver to see if I can come up with a reason as to why they certain answers are certain, and awful results are awful (maybe contamination, bad images etc.)
 - [ ] Add cross colours.
 - [ ] Add other (all) features.
 - [ ] Investigate feature importance as a function of redshift?
