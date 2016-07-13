@@ -6,7 +6,7 @@ predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fi
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
-othertrain=['SPECZ']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
+othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 
@@ -49,5 +49,5 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
 plotbandvprob=0								    # Plot hist of filter band vs prob for each class
-plotcolourvprob=1                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
-get_images=0
+plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
+get_images=1

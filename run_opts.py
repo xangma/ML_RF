@@ -12,7 +12,7 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
-def checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats):
+def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
         checkmagspos_log=logging.getLogger('checkmagspos')
@@ -45,12 +45,13 @@ def checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_n
             OBJID_pr = OBJID_pr[XXpred_neg_index]
             RA_tr,DEC_tr = RA_tr[XX_neg_index],DEC_tr[XX_neg_index]
             RA_pr,DEC_pr = RA_pr[XXpred_neg_index],DEC_pr[XXpred_neg_index]
+            specz_tr,specz_pr = specz_tr[XX_neg_index],specz_pr[XXpred_neg_index]
 
-        return XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
     else:
-        return XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
 
-def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
+def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
     if len(settings.weightinput) > 0:
         run_opts_log.info('')
         weightinput_log=logging.getLogger('weightinput')
@@ -78,10 +79,12 @@ def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr): # Weights num of object
         OBJID_tr = OBJID_tr[numpy.int64(finalsel_sort)] # THIS NEEDS TO BE TESTED/CHECKED
         RA_tr = RA_tr[numpy.int64(finalsel_sort)] # THIS NEEDS TO BE TESTED/CHECKED
         DEC_tr = DEC_tr[numpy.int64(finalsel_sort)] # THIS NEEDS TO BE TESTED/CHECKED
+        specz_tr = specz_tr[numpy.int64(finalsel_sort)] # THIS NEEDS TO BE TESTED/CHECKED
 
-        return XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr
+
+        return XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr
     else:
-        return XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr
+        return XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr
 
 # Find and exclude unclassified objects (subclass)
 def find_only_classified(traindata,preddata):

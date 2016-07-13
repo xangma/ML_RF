@@ -13,6 +13,8 @@ import astropy.io.fits as fits
 import time
 import plots
 import logging
+import shutil
+import requests
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
@@ -36,6 +38,11 @@ logger.addHandler(console)
 
 if 'plots' not in dirs: # Create plots directory  if it doesn't exist
     os.mkdir('plots')
+if 'temp' not in dirs:
+    os.mkdir('temp')
+else:
+    shutil.rmtree('temp')
+    os.mkdir('temp')
 
 def get_function(function_string):
     import importlib
@@ -115,6 +122,7 @@ subclass_tr=traindata['SPEC_SUBCLASS_ID']
 subclass_names_tr=traindata['SPEC_SUBCLASS']
 OBJID_tr = traindata['OBJID']
 RA_tr,DEC_tr = traindata['RA'],traindata['DEC']
+specz_tr = traindata['SPECZ']
 
 XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
 
@@ -130,31 +138,33 @@ subclass_pr = preddata['SPEC_SUBCLASS_ID']
 subclass_names_pr = preddata['SPEC_SUBCLASS']
 OBJID_pr = preddata['OBJID']
 RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
-
+specz_pr = preddata['SPECZ']
 
 XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
-XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
- = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
+XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+ = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
 
-XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr) # Weight training set? - specified in settings
+XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
 XX = XX[0:traindatanum] # Cut whole training array down to size specified in settings
 XXpredict=XXpredict[0:predictdatanum]
 classnames_tr=classnames_tr[0:traindatanum] # Do same for classnames
 classnames_pr=classnames_pr[0:predictdatanum]
+OBJID_tr = OBJID_tr[0:traindatanum]
+OBJID_pr = OBJID_pr[0:predictdatanum]
+RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
+RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
+specz_tr,specz_pr = specz_tr[0:traindatanum],specz_pr[0:predictdatanum]
 
 # Cuts for doublesubrun
 subclass_tr = subclass_tr[0:traindatanum]
 subclass_names_tr = subclass_names_tr[0:traindatanum]
 subclass_pr = subclass_pr[0:predictdatanum]
 subclass_names_pr = subclass_names_pr[0:predictdatanum]
-OBJID_tr = OBJID_tr[0:traindatanum]
-OBJID_pr = OBJID_pr[0:predictdatanum]
-RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
-RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
+
 
 del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
 
@@ -321,7 +331,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
     
-    return result,feat_importance
+    return result,feat_importance,probs
 
 if settings.actually_run == 1:# If it is set to actually run in settings
     result=run_MLA(XX,XXpredict,yy,yypredict,n_feat)
@@ -345,19 +355,59 @@ if settings.double_sub_run == 1:
     settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
     result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
 
-#if settings.getimages == 1:
-# images = {}
-# for each class[j]
-# for i in range (0,6)
-# where result == yypredict && prob[j] > .9
-# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as good_res
-# where prob[j] >.45 && prob[j] < .55
-# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as ok_res
-# where prob[j] < .1
-# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as bad_res
-# for each ID in there:
-# tack on image into dict? somehow? Using the RAs and DECs in the URL below?
-# http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237665328775233596
-# http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=175.925216040431&dec=31.0453910049606&scale=0.2&width=200&height=200&opt=G
+if settings.get_images == 1:
+    image_IDs = {}
+    for i in range(len(unique_IDS_pr)):
+        # create masks
+        yymask = yypredict == i
+        OBJID_pr_loop = OBJID_pr[yymask]
+        result_loop = result[0][yymask]
+        yypredict_loop = yypredict[yymask]
+        probs_loop = result[2][yymask]
+        RA_pr_loop = RA_pr[yymask]
+        DEC_pr_loop = DEC_pr[yymask]
+        specz_pr_loop = specz_pr[yymask]
+        # for i in range (0,6)
+        good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
+        # put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as good_res
+        ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
+        # where prob[j] >.45 && prob[j] < .55
+        # put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as ok_res
+        bad_mask = probs_loop[:,i] < 0.1
+        image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
+        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask]}
+    os.chdir('temp')
+    dirs_temp = os.listdir()
+    for i in range(len(unique_IDS_pr)):
+        for j in range(0,10):        
+            img_ID_good = image_IDs[i]['good_ID'][j]
+            img_RA_good = image_IDs[i]['good_RA'][j]
+            img_DEC_good = image_IDs[i]['good_DEC'][j]
+            img_SPECZ_good = image_IDs[i]['good_specz'][j]
+            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good)
+            response = requests.get(url, stream=True)
+            with open('good_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5)), 'wb') as out_file:
+                shutil.copyfileobj(response.raw, out_file)
+            del response
+            img_ID_ok =  image_IDs[i]['ok_ID'][j]
+            img_RA_ok =  image_IDs[i]['ok_RA'][j]
+            img_DEC_ok = image_IDs[i]['ok_DEC'][j]
+            img_SPECZ_ok = image_IDs[i]['ok_specz'][j]
+            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok)
+            response = requests.get(url, stream=True)
+            with open('ok_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5)), 'wb') as out_file:
+                shutil.copyfileobj(response.raw, out_file)
+            del response
+            img_ID_bad =  image_IDs[i]['bad_ID'][j]
+            img_RA_bad =  image_IDs[i]['bad_RA'][j]
+            img_DEC_bad = image_IDs[i]['bad_DEC'][j]
+            img_SPECZ_bad = image_IDs[i]['bad_specz'][j]
+            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad)
+            response = requests.get(url, stream=True)
+            with open('bad_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5)), 'wb') as out_file:
+                shutil.copyfileobj(response.raw, out_file)
+            del response
+            time.sleep(0.1)
 
 logger.removeHandler(console)
