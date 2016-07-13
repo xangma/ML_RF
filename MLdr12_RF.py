@@ -108,11 +108,17 @@ if len(filt_train_all) >= 1:
         XX=numpy.column_stack((XX,numpy.array(filt_train_all[i][0])))
 for i in range(len(settings.othertrain)): # Tack on other training features (not mags, like redshift)
     XX = numpy.column_stack((XX,traindata[settings.othertrain[i]]))
+
+# Other variables to carry through cuts
 classnames_tr=traindata[settings.predict[:-3]] # Get classnames
 subclass_tr=traindata['SPEC_SUBCLASS_ID']
 subclass_names_tr=traindata['SPEC_SUBCLASS']
+OBJID_tr = traindata['OBJID']
+RA_tr,DEC_tr = traindata['RA'],traindata['DEC']
+
 XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
 
+# Do the same for predict data
 XXpredict=numpy.array(filt_predict_all[0][0])
 if len(filt_predict_all) > 1:
     for i in range(1,len(filt_predict_all)):
@@ -122,14 +128,18 @@ for i in range(len(settings.othertrain)): # Tack on other prediction features (n
 classnames_pr=preddata[settings.predict[:-3]]
 subclass_pr = preddata['SPEC_SUBCLASS_ID']
 subclass_names_pr = preddata['SPEC_SUBCLASS']
+OBJID_pr = preddata['OBJID']
+RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
+
+
 XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
-XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr\
- = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,filtstats)
+XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+ = run_opts.checkmagspos(XX,XXpredict,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
 
-XX,classnames_tr = run_opts.weightinput(XX,classnames_tr) # Weight training set? - specified in settings
+XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr) # Weight training set? - specified in settings
 
 XX = XX[0:traindatanum] # Cut whole training array down to size specified in settings
 XXpredict=XXpredict[0:predictdatanum]
@@ -141,6 +151,10 @@ subclass_tr = subclass_tr[0:traindatanum]
 subclass_names_tr = subclass_names_tr[0:traindatanum]
 subclass_pr = subclass_pr[0:predictdatanum]
 subclass_names_pr = subclass_names_pr[0:predictdatanum]
+OBJID_tr = OBJID_tr[0:traindatanum]
+OBJID_pr = OBJID_pr[0:predictdatanum]
+RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
+RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
 
 del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
 
@@ -331,8 +345,19 @@ if settings.double_sub_run == 1:
     settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
     result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
 
-#if settings.get_images == 1:
+#if settings.getimages == 1:
+# images = {}
+# for each class[j]
+# for i in range (0,6)
+# where result == yypredict && prob[j] > .9
+# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as good_res
+# where prob[j] >.45 && prob[j] < .55
+# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as ok_res
+# where prob[j] < .1
+# put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as bad_res
+# for each ID in there:
+# tack on image into dict? somehow? Using the RAs and DECs in the URL below?
 # http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237665328775233596
-#    http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=175.925216040431&dec=31.0453910049606&scale=0.2&width=200&height=200&opt=G
+# http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=175.925216040431&dec=31.0453910049606&scale=0.2&width=200&height=200&opt=G
 
 logger.removeHandler(console)
