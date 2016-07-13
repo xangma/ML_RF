@@ -15,6 +15,9 @@ These are optional functions that the main code dips out to. Most can be enabled
 ####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
+13/7/16
+- Added option to get images of each class, ones where the MLA got it right, nearly got it right, and got it really wrong. Places them in a temp folder and labels with MLA guess (good is prob > 0.9, ok is between 0.45 and 0.55, and bad is < 0.1), class, OBJID, and SPECZ.
+
 12/7/16
 - Added option to assess feature importances of each class compared to the others. Shows a crude plot.
 
