@@ -9,8 +9,9 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
+
 double_sub_run = 0
-one_vs_all = 1                                                              # WARNING. Takes as many runs as there are classes in training set
+one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -32,7 +33,7 @@ diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 16, 'n_jobs': 4,'bootstrap':False,'verbose':True}         # MLA settings
-actually_run=0                                                              # Actually run the MLA
+actually_run=1                                                              # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
@@ -49,3 +50,4 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
 plotbandvprob=0								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=0                                                           # Plot hist of colour bands vs prob for each class (for class, not subclass)
+get_images=1
