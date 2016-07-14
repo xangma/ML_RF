@@ -135,5 +135,5 @@ def plot_feat_per_class(one_vs_all_results):
 #    plt.xticks(numpy.array(range(len(feat_arr[0]))))
     plt.minorticks_on()
     plt.grid(alpha=0.4,which='both')
-    plt.savefig('%sFeature_imp_per_class.png' %fullsavedir)
+    plt.savefig('plots/Feature_imp_per_class.png')
     plt.close()
