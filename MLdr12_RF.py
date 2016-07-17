@@ -15,6 +15,7 @@ import plots
 import logging
 import shutil
 import requests
+import treeinterpreter as ti
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
@@ -179,18 +180,22 @@ if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     for i in range(len(unique_IDS_tr)):
         yy_orig = yy
         yypredict_orig = yypredict
-        yy_out = [99 if x!=unique_IDS_tr[i] else x for x in yy_orig]
-        yypredict_out = [99 if x!=unique_IDS_tr[i] else x for x in yypredict_orig]
+        yy_out = [numpy.float32(99) if x!=unique_IDS_tr[i] else x for x in yy_orig]
+        yypredict_out = [numpy.float32(99) if x!=unique_IDS_tr[i] else x for x in yypredict_orig]
+#        classnames_tr_out = ['Other' if x!=numpy.unique(classnames_tr)[i] else x for x in classnames_tr]
+#        classnames_pr_out = ['Other' if x!=numpy.unique(classnames_pr)[i] else x for x in classnames_pr]
 #        yy_orig=yy_orig[yy_orig != unique_IDS_tr[i]] = 99
 #        yypredict_orig[yypredict_orig != unique_IDS_tr[i]] = 99
         XX_stack = numpy.column_stack((XX[:,:-1],yy_out))
         XXpredict_stack = numpy.column_stack((XXpredict[:,:-1],yypredict_out))
         XX_one_vs_all[i] = XX_stack
         XXpredict_one_vs_all[i] = XXpredict_stack
-        yy_one_vs_all[i] = yy_orig
-        yypredict_one_vs_all[i] = yypredict_orig
+        yy_one_vs_all[i] = yy_out
+        yypredict_one_vs_all[i] = yypredict_out
+#        classnames_tr_one_vs_all[i]=classnames_tr_out
+#        classnames_pr_one_vs_all[i]=classnames_pr_out
 
-def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
+def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat):
     logger.info('Starting MLA run')
     logger.info('------------')
     if settings.pyspark_on == 1:                # Use pyspark or not? Pyspark makes cross node (HPC) calculation possible.
@@ -288,7 +293,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
         logger.info('Predict start')
         logger.info('------------')
         start = time.time()
-        result,probs=[],[]
+        result,probs,contributions=[],[],[]
         XXpredict_cats=numpy.array_split(XXpredict,numcats)
         logger.info('Splitting predict array into %s' %numcats)
         logger.info('------------')
@@ -296,6 +301,9 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
             logger.info('Predicting cat %s/%s' %(i,len(XXpredict_cats)))
             result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
             probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
+            tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
+            contributions.extend(tiresult[2])
+        bias = tiresult[1][0]
         feat_importance = clf.feature_importances_
         result=numpy.float32(result)
         probs=numpy.float32(probs)
@@ -331,17 +339,23 @@ def run_MLA(XX,XXpredict,yy,yypredict,n_feat):
     plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
     
-    return result,feat_importance,probs
+    return result,feat_importance,probs,bias,contributions
 
-if settings.actually_run == 1:# If it is set to actually run in settings
-    result=run_MLA(XX,XXpredict,yy,yypredict,n_feat)
+if (settings.actually_run == 1) & (settings.one_vs_all == 0):# If it is set to actually run in settings
+    result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
 
 if settings.one_vs_all == 1:
     one_vs_all_results = {}
     for i in range(len(unique_IDS_tr)):
-        result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],yy_one_vs_all[i],yypredict_one_vs_all[i],n_feat)
+        unique_IDs_tr_loop=[unique_IDS_tr[i],numpy.float32(99)]
+        unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
+        uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
+        uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
+        result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat)
         one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1]}
     plots.plot_feat_per_class(one_vs_all_results)
+    if len(settings.othertrain) > 0:    
+        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
 
 if settings.double_sub_run == 1:
     XX = numpy.column_stack((XX,subclass_tr))
@@ -353,7 +367,7 @@ if settings.double_sub_run == 1:
     unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
     run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
     settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
-    result2 = run_MLA(XX,XXpredict,yy,yypredict,n_feat)
+    result2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
 
 if settings.get_images == 1:
     image_IDs = {}
@@ -375,37 +389,58 @@ if settings.get_images == 1:
         # put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as ok_res
         bad_mask = probs_loop[:,i] < 0.1
         image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask]}
+        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask]}
     os.chdir('temp')
     dirs_temp = os.listdir()
+    num_max_images = 10
     for i in range(len(unique_IDS_pr)):
-        for j in range(0,10):        
+        if len(image_IDs[i]['good_ID']) > num_max_images:
+            top_good = num_max_images
+        else:
+            top_good = len(image_IDs[i]['good_ID'])
+        for j in range(0,top_good):        
             img_ID_good = image_IDs[i]['good_ID'][j]
             img_RA_good = image_IDs[i]['good_RA'][j]
             img_DEC_good = image_IDs[i]['good_DEC'][j]
             img_SPECZ_good = image_IDs[i]['good_specz'][j]
+            img_result_good = image_IDs[i]['good_result'][j]
+            img_probs_good = image_IDs[i]['good_probs'][j]
             url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good)
             response = requests.get(url, stream=True)
-            with open('good_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5)), 'wb') as out_file:
+            with open('good_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5),img_result_good,img_probs_good[img_result_good]), 'wb') as out_file:
                 shutil.copyfileobj(response.raw, out_file)
             del response
+        if len(image_IDs[i]['ok_ID']) > num_max_images:
+            top_ok = num_max_images
+        else:
+            top_ok = len(image_IDs[i]['ok_ID'])
+        for j in range(0,top_ok):        
             img_ID_ok =  image_IDs[i]['ok_ID'][j]
             img_RA_ok =  image_IDs[i]['ok_RA'][j]
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
             img_SPECZ_ok = image_IDs[i]['ok_specz'][j]
+            img_result_ok = image_IDs[i]['ok_result'][j]
+            img_probs_ok = image_IDs[i]['ok_probs'][j]
             url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok)
             response = requests.get(url, stream=True)
-            with open('ok_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5)), 'wb') as out_file:
+            with open('ok_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5),img_result_ok,img_probs_ok[img_result_ok]), 'wb') as out_file:
                 shutil.copyfileobj(response.raw, out_file)
             del response
+        if len(image_IDs[i]['bad_ID']) > num_max_images:
+            top_bad = num_max_images
+        else:
+            top_bad = len(image_IDs[i]['bad_ID'])
+        for j in range(0,top_bad):   
             img_ID_bad =  image_IDs[i]['bad_ID'][j]
             img_RA_bad =  image_IDs[i]['bad_RA'][j]
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
             img_SPECZ_bad = image_IDs[i]['bad_specz'][j]
+            img_result_bad = image_IDs[i]['bad_result'][j]
+            img_probs_bad = image_IDs[i]['bad_probs'][j]
             url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad)
             response = requests.get(url, stream=True)
-            with open('bad_class_%s_ID_%s_specz_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5)), 'wb') as out_file:
+            with open('bad_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5),img_result_bad,img_probs_bad[img_result_bad]), 'wb') as out_file:
                 shutil.copyfileobj(response.raw, out_file)
             del response
             time.sleep(0.1)

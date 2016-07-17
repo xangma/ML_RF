@@ -6,7 +6,7 @@ predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fi
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
-othertrain=[]#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
+othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z','EXPAB_U','EXPAB_G','EXPAB_R','EXPAB_I','EXPAB_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 
@@ -26,7 +26,7 @@ log_outfile='ML_RF_logfile.txt'						    # Name of output logfile
 stats_outfile='ML_RF_stats.txt'
 
 traindatanum=2500                                                          # Number of objects to train on
-predictdatanum=500000                                                       # Number of objects to predict
+predictdatanum=10000                                                       # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 
 diagnostics=1
