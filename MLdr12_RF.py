@@ -285,6 +285,17 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')
         
+        if settings.output_tree == 1:
+    #        feat_names=numpy.array(range(0,n_feat))
+            from sklearn import tree
+            i_tree = 0
+            for tree_in_forest in clf.estimators_:
+                with open('tree_' + str(i_tree) + '.dot', 'w') as my_file:
+                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file)
+                os.system('dot -Tpng tree_%s.dot -o tree_%s.png' %(i_tree,i_tree))
+                os.remove('tree_%s.dot' %i_tree)
+                i_tree = i_tree + 1        
+                
         start, end=[],[]
         # Split cats for RAM management
         numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))*10
@@ -310,7 +321,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
-    
+
     logger.info('Totalling results')
     n = sum(result == yypredict)
     logger.info('%s / %s were correct' %(n,predictdatanum))

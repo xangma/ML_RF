@@ -24,6 +24,7 @@ result_outfile = 'ML_RF_results.txt'
 prob_outfile = 'ML_RF_probs.txt'
 log_outfile='ML_RF_logfile.txt'						    # Name of output logfile
 stats_outfile='ML_RF_stats.txt'
+output_tree = 1
 
 traindatanum=2500                                                          # Number of objects to train on
 predictdatanum=10000                                                       # Number of objects to predict
