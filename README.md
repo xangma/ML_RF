@@ -17,6 +17,7 @@ Contains all settings for program. Is quite particular so be careful. Can swap o
 
 17/7/16
 - Added support for treeinterpreter! This currently makes it quite slow, might need to do something about that soon. Have turned the number of objects to be predicted down in the meantime. This function gives the contributions of each feature for each object for each class. Now we can see which feature helped decide each object individually!
+- Finally added the propagation of feature names. This means plots will actually be labelled and the tree has interpretable labels too. Yay.
 
 13/7/16
 - Added option to get images of each class, ones where the MLA got it right, nearly got it right, and got it really wrong. Places them in a temp folder and labels with MLA guess (good is prob > 0.9, ok is between 0.45 and 0.55, and bad is < 0.1), class, OBJID, and SPECZ.
