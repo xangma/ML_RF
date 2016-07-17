@@ -113,40 +113,44 @@ def find_only_classified(traindata,preddata):
         return traindata,preddata
 
 # Calculate all possible colours and append them to train and predict sets
-def calculate_colours(filt_train,filt_predict,n_filt):
+def calculate_colours(filt_train,filt_predict,n_filt,filt_names,j):
     if settings.calculate_colours == 1:
         run_opts_log.info('')
         calculate_colours_log=logging.getLogger('calculating_colours')
         calculate_colours_log.info('Calculating colours ...')
 #        n_filt = filt_train.shape[1]
 #        print(n_filt)
+        col_names=[]
         combs = list(it.combinations(range(n_filt),2))
 #        print(combs)
         colours_all_train=[]
         for i in range(len(combs)):
             colours=filt_train[:,combs[i][0]]-filt_train[:,combs[i][1]]
             colours_all_train.append(colours)
-        
+            col_names.append('%s - %s' %(settings.filters[j][combs[i][0]],settings.filters[j][combs[i][1]]))
         colours_all_predict=[]
         for i in range(len(combs)):
             colours=filt_predict[:,combs[i][0]]-filt_predict[:,combs[i][1]]
             colours_all_predict.append(colours)
+        
         filt_train=numpy.column_stack((filt_train,numpy.transpose(colours_all_train)))
         filt_predict=numpy.column_stack((filt_predict,numpy.transpose(colours_all_predict)))
         del colours, colours_all_train, colours_all_predict
-        return filt_train,filt_predict,combs
+        return filt_train,filt_predict,combs,filt_names,col_names
     else:
         combs=0
-        return filt_train,filt_predict,combs
+        return filt_train,filt_predict,combs,filt_names,col_names
 
-def use_filt_colours(filt_train,filt_predict,j,n_filt): # This reads in which colours to use. Defined in settings.
+def use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j): # This reads in which colours to use. Defined in settings.
     if settings.calculate_colours == 1:
         run_opts_log.info('')
         use_filt_colours_log=logging.getLogger('use_filt_colours')
         use_filt_colours_log.info('Selecting colours to use from settings.usecolours')
         x=[]
+        cut_col_names=[]
         for i in range(len(settings.use_colours[j])):
             filt=filt_train[:,(settings.use_colours[j][i]+n_filt)]
+            cut_col_names.append(col_names_j[settings.use_colours[j][i]])
             x.append(filt)
         filt_train=numpy.column_stack((filt_train[:,0:n_filt],numpy.transpose(x)))
         x=[]
@@ -156,10 +160,10 @@ def use_filt_colours(filt_train,filt_predict,j,n_filt): # This reads in which co
         filt_predict=numpy.column_stack((filt_predict[:,0:n_filt],numpy.transpose(x)))
         n_colour=(len(x))
         del x, filt
-        return filt_train,filt_predict,n_colour
+        return filt_train,filt_predict,n_colour,cut_col_names
     else:
         n_colour=0
-        return filt_train,filt_predict,n_colour
+        return filt_train,filt_predict,n_colour,cut_col_names
 
 def diagnostics(x, state): # This is quite a 'free' function that is meant to output diagnostic information.
     if settings.diagnostics == 1:

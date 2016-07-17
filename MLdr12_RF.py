@@ -78,22 +78,29 @@ traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find a
 
 filt_train_all= {} # Set up arrays
 filt_predict_all = {}
+filt_names={}
+col_names={}
 combs={}
+feat_names=[]
 
 for j in range(len(settings.filters)): # For each filter set
     n_filt=len(settings.filters[j]) # Get the number of filters
     filt_train=[] # Set up filter array
     for i in range(numpy.size(settings.filters[j])): # For each filter i in filter set j 
         filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
+    filt_names[j]= settings.filters[j]
     filt_train=numpy.transpose(filt_train)
+#    filt_names=numpy.transpose(filt_names)
     filt_predict=[]
     for i in range(numpy.size(settings.filters[j])): # Do same for prediction set
         filt_predict.append(preddata[settings.filters[j][i]])
     filt_predict=numpy.transpose(filt_predict)
     
-    filt_train,filt_predict,combs[j] = run_opts.calculate_colours(filt_train,filt_predict,n_filt) # Section that calculates all possible colours
-    filt_train,filt_predict,n_colour = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt) # Section that checks use_colours and cuts colours accordingly
-
+    filt_train,filt_predict,combs[j],filt_names,col_names_j = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,j) # Section that calculates all possible colours
+    
+    filt_train,filt_predict,n_colour,col_names_j = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j) # Section that checks use_colours and cuts colours accordingly
+    col_names[j]=col_names_j
+    
     filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
     filt_predict_all[j]=filt_predict,n_filt,n_colour
 
@@ -108,7 +115,10 @@ n_oth=len(settings.othertrain) # Number of other features
 n_feat=n_filt+n_colours+n_oth # Number of total features
 logger.info('Number of filters: %s, Number of colours: %s, Number of other features: %s' %(n_filt,n_colours,n_oth))
 logger.info('Number of total features = %s + 1 target' %(n_feat))
-    
+
+for j in range(len(settings.filters)):
+    feat_names = feat_names+filt_names[j]+col_names[j]
+feat_names = feat_names+settings.othertrain
 # Stack arrays to feed to MLA
 XX=numpy.array(filt_train_all[0][0])
 if len(filt_train_all) >= 1:
@@ -291,7 +301,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             i_tree = 0
             for tree_in_forest in clf.estimators_:
                 with open('tree_' + str(i_tree) + '.dot', 'w') as my_file:
-                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file)
+                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file,feature_names=feat_names)
                 os.system('dot -Tpng tree_%s.dot -o tree_%s.png' %(i_tree,i_tree))
                 os.remove('tree_%s.dot' %i_tree)
                 i_tree = i_tree + 1        
