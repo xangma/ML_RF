@@ -301,7 +301,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             i_tree = 0
             for tree_in_forest in clf.estimators_:
                 with open('tree_' + str(i_tree) + '.dot', 'w') as my_file:
-                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file,feature_names=feat_names)
+                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
                 os.system('dot -Tpng tree_%s.dot -o tree_%s.png' %(i_tree,i_tree))
                 os.remove('tree_%s.dot' %i_tree)
                 i_tree = i_tree + 1        
@@ -314,7 +314,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('Predict start')
         logger.info('------------')
         start = time.time()
-        result,probs,contributions=[],[],[]
+        result,probs,bias,contributions=[],[],[],[]
         XXpredict_cats=numpy.array_split(XXpredict,numcats)
         logger.info('Splitting predict array into %s' %numcats)
         logger.info('------------')
@@ -322,9 +322,10 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             logger.info('Predicting cat %s/%s' %(i,len(XXpredict_cats)))
             result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
             probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
-            tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
-            contributions.extend(tiresult[2])
-        bias = tiresult[1][0]
+            if settings.get_contributions == 1:            
+                tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
+                contributions.extend(tiresult[2])
+                bias = tiresult[1][0]
         feat_importance = clf.feature_importances_
         result=numpy.float32(result)
         probs=numpy.float32(probs)
@@ -359,11 +360,9 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
     plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
     plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
     plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
+    plots.plot_feat(feat_importance,feat_names)
     
     return result,feat_importance,probs,bias,contributions
-
-if (settings.actually_run == 1) & (settings.one_vs_all == 0):# If it is set to actually run in settings
-    result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
 
 if settings.one_vs_all == 1:
     one_vs_all_results = {}
@@ -373,10 +372,13 @@ if settings.one_vs_all == 1:
         uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
         uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
         result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat)
-        one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1]}
-    plots.plot_feat_per_class(one_vs_all_results)
+        one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+    plots.plot_feat_per_class(one_vs_all_results,feat_names)
     if len(settings.othertrain) > 0:    
         plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
+
+if settings.actually_run == 1:# If it is set to actually run in settings
+    result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
 
 if settings.double_sub_run == 1:
     XX = numpy.column_stack((XX,subclass_tr))
@@ -392,6 +394,7 @@ if settings.double_sub_run == 1:
 
 if settings.get_images == 1:
     image_IDs = {}
+    logging.getLogger("requests").setLevel(logging.WARNING)
     for i in range(len(unique_IDS_pr)):
         # create masks
         yymask = yypredict == i
