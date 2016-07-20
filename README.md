@@ -3,6 +3,10 @@ Machine Learning Random Forest Classification for DR12.
 
 This code performs star/galaxy/QSO separation using a training set with known targets.
 
+Dependencies not in standard Anaconda:
+- treeinterpreter.py (http://blog.datadive.net/interpreting-random-forests/)
+- markup.py (http://markup.sourceforge.net/)
+
 ####MLdr12_RF.py 
 This is the main file. Run this to start program.
 
