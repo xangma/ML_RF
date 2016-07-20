@@ -376,7 +376,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
         plots.plot_feat(feat_importance,feat_names,n_run)
     
-    return result,feat_importance,probs,bias,contributions
+    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
@@ -392,8 +392,10 @@ for n in range(0,settings.n_runs):
             unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-            result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
-            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+#            result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+#            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
         plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
     #        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
@@ -402,19 +404,23 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
-if settings.double_sub_run == 1:
-    XX = numpy.column_stack((XX,subclass_tr))
-    XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
-    n_feat=n_feat+1
-    yy=subclass_tr
-    yypredict=subclass_pr
-    logger.info('Starting *SECOND* MLA run')
-    unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
-    run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
-    settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
-    result2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
+#        result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+
+    if settings.double_sub_run == 1:
+        XX = numpy.column_stack((XX,subclass_tr))
+        XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
+        n_feat=n_feat+1
+        yy=subclass_tr
+        yypredict=subclass_pr
+        logger.info('Starting *SECOND* MLA run')
+        ind_run_name = 'DSR_%s' %n
+        unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
+        run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
+        settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
+        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+#    result2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
 
 if settings.get_images == 1:
     image_IDs = {}
@@ -423,9 +429,9 @@ if settings.get_images == 1:
         # create masks
         yymask = yypredict == i
         OBJID_pr_loop = OBJID_pr[yymask]
-        result_loop = result[0][yymask]
+        result_loop = result[yymask]
         yypredict_loop = yypredict[yymask]
-        probs_loop = result[2][yymask]
+        probs_loop = probs[yymask]
         RA_pr_loop = RA_pr[yymask]
         DEC_pr_loop = DEC_pr[yymask]
         specz_pr_loop = specz_pr[yymask]
@@ -441,8 +447,12 @@ if settings.get_images == 1:
         , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask]}
     os.chdir('temp')
     dirs_temp = os.listdir()
+    img_good_all=[]
+    img_ok_all=[]
+    img_bad_all=[]
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
+        url_list=[]
         if len(image_IDs[i]['good_ID']) > num_max_images:
             top_good = num_max_images
         else:
@@ -454,11 +464,13 @@ if settings.get_images == 1:
             img_SPECZ_good = image_IDs[i]['good_specz'][j]
             img_result_good = image_IDs[i]['good_result'][j]
             img_probs_good = image_IDs[i]['good_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good)
-            response = requests.get(url, stream=True)
-            with open('good_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5),img_result_good,img_probs_good[img_result_good]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
+        image_IDs[i].update({'good_url':url_list})
+#            response = requests.get(url, stream=True)
+#            with open('good_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5),img_result_good,img_probs_good[img_result_good]), 'wb') as out_file:
+#                shutil.copyfileobj(response.raw, out_file)
+#            del response
+        url_list=[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
         else:
@@ -470,11 +482,13 @@ if settings.get_images == 1:
             img_SPECZ_ok = image_IDs[i]['ok_specz'][j]
             img_result_ok = image_IDs[i]['ok_result'][j]
             img_probs_ok = image_IDs[i]['ok_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok)
-            response = requests.get(url, stream=True)
-            with open('ok_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5),img_result_ok,img_probs_ok[img_result_ok]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
+        image_IDs[i].update({'ok_url':url_list})
+#            response = requests.get(url, stream=True)
+#            with open('ok_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5),img_result_ok,img_probs_ok[img_result_ok]), 'wb') as out_file:
+#                shutil.copyfileobj(response.raw, out_file)
+#            del response
+        url_list=[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
         else:
@@ -486,11 +500,13 @@ if settings.get_images == 1:
             img_SPECZ_bad = image_IDs[i]['bad_specz'][j]
             img_result_bad = image_IDs[i]['bad_result'][j]
             img_probs_bad = image_IDs[i]['bad_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad)
-            response = requests.get(url, stream=True)
-            with open('bad_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5),img_result_bad,img_probs_bad[img_result_bad]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
-            time.sleep(0.1)
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
+        image_IDs[i].update({'bad_url':url_list})
+#            response = requests.get(url, stream=True)
+#            with open('bad_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5),img_result_bad,img_probs_bad[img_result_bad]), 'wb') as out_file:
+#                shutil.copyfileobj(response.raw, out_file)
+#            del response
+#            time.sleep(0.1)
 
 logger.removeHandler(console)
+#http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515
