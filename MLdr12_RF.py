@@ -16,6 +16,8 @@ import logging
 import shutil
 import requests
 import treeinterpreter as ti
+from sklearn import metrics
+
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
@@ -294,7 +296,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         end = time.time()
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')
-        
+        score = clf.score
         if settings.output_tree == 1:
     #        feat_names=numpy.array(range(0,n_feat))
             from sklearn import tree
@@ -315,6 +317,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('------------')
         start = time.time()
         result,probs,bias,contributions=[],[],[],[]
+        training_prediction=clf.predict(XX[:,0:n_feat])
         XXpredict_cats=numpy.array_split(XXpredict,numcats)
         logger.info('Splitting predict array into %s' %numcats)
         logger.info('------------')
@@ -329,15 +332,25 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         feat_importance = clf.feature_importances_
         result=numpy.float32(result)
         probs=numpy.float32(probs)
+
+        accuracy = metrics.accuracy_score(result,yypredict)
+        recall = metrics.recall_score(result,yypredict,average=None)
+        precision = metrics.precision_score(result,yypredict,average=None)
+        score = metrics.f1_score(result, yypredict,average=None)
+        
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
 
-    logger.info('Totalling results')
-    n = sum(result == yypredict)
-    logger.info('%s / %s were correct' %(n,predictdatanum))
-    logger.info('That''s %s percent' %((n/predictdatanum)*100))
-    logger.info('------------')
+#    logger.info('Totalling results')
+#    n = sum(result == yypredict)
+#    logger.info('%s / %s were correct' %(n,predictdatanum))
+#    logger.info('That''s %s percent' %((n/predictdatanum)*100))
+#    logger.info('------------')
+    logger.info('Recall Score: %s' %recall)
+    logger.info('Precision Score: %s' %precision)
+    logger.info('Accuracy Score: %s' %accuracy)
+    logger.info('F1 Score: %s' %score)
     percentage=(n/predictdatanum)*100
     resultsstack = numpy.column_stack((XXpredict,result,probs)) # Compile results into table
     

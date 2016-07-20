@@ -11,7 +11,7 @@ predict = 'SPEC_CLASS_ID'                                                   # Fe
 
 
 double_sub_run = 0
-one_vs_all = 1                                                              # WARNING. Takes as many runs as there are classes in training set
+one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -37,7 +37,7 @@ diagnostics=1
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 256, 'n_jobs': 4,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
 actually_run=1   
-n_runs = 10                                                                 # Actually run the MLA
+n_runs = 1                                                                 # Actually run the MLA
 
 # RUN OPTS
 checkmagspos=1                                                              # Checks filter mags are positive. Keep this on
@@ -55,4 +55,4 @@ plotsubclasshist=0                                                          # Pl
 plotbandvprob=0								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=0    
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
-get_images=0
+get_images=1
