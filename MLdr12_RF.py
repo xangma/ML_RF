@@ -205,7 +205,7 @@ if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
 #        classnames_tr_one_vs_all[i]=classnames_tr_out
 #        classnames_pr_one_vs_all[i]=classnames_pr_out
 
-def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat):
+def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n_run):
     logger.info('Starting MLA run')
     logger.info('------------')
     if settings.pyspark_on == 1:                # Use pyspark or not? Pyspark makes cross node (HPC) calculation possible.
@@ -350,35 +350,46 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('------------')
         if settings.resultsstack_save == 1:
             numpy.savetxt(settings.outfile,resultsstack)
-        numpy.savetxt(settings.result_outfile,numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
-        numpy.savetxt(settings.prob_outfile,probs)
-        numpy.savetxt(settings.feat_outfile,feat_importance)
-        numpy.savetxt(settings.stats_outfile,numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage)),header="n_est traindatanum predictdatanum percentage")
+        numpy.savetxt(settings.result_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
+        numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
+        numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
+        numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
     
     # PLOTS
     logger.info('Plotting ...')
-    plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
-    plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
-    plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
-    plots.plot_feat(feat_importance,feat_names)
+    if 'OvsA' not in ind_run_name:
+        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
+        plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
+        plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
+        plots.plot_feat(feat_importance,feat_names,n_run)
     
     return result,feat_importance,probs,bias,contributions
 
-if settings.one_vs_all == 1:
-    one_vs_all_results = {}
-    for i in range(len(unique_IDS_tr)):
-        unique_IDs_tr_loop=[unique_IDS_tr[i],numpy.float32(99)]
-        unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
-        uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
-        uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-        result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat)
-        one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
-    plots.plot_feat_per_class(one_vs_all_results,feat_names)
-    if len(settings.othertrain) > 0:    
-        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
-
-if settings.actually_run == 1:# If it is set to actually run in settings
-    result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
+for n in range(0,settings.n_runs):
+    logging.info('%s/%s runs' %(n,settings.n_runs))
+    if settings.one_vs_all == 1:
+        one_vs_all_results = {}
+        tree_was_on = 0
+        if settings.output_tree == 1:
+            tree_was_on = 1
+            settings.output_tree = 0
+        for i in range(len(unique_IDS_tr)):
+            ind_run_name = 'OvsA_%s_%s' %(uniquetarget_tr[0][i],n)
+            unique_IDs_tr_loop=[unique_IDS_tr[i],numpy.float32(99)]
+            unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
+            uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
+            uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
+            result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+        plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
+    #    if len(settings.othertrain) > 0:    
+    #        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
+        if tree_was_on == 1:
+            settings.output_tree = 1
+    
+    if settings.actually_run == 1:# If it is set to actually run in settings
+        ind_run_name = 'standard_%s' %n
+        result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
 if settings.double_sub_run == 1:
     XX = numpy.column_stack((XX,subclass_tr))

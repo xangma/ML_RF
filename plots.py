@@ -118,7 +118,7 @@ def plot_colourvprob(resultsstack,filtstats,probshape,combs): # Plots each colou
                 bottom=bottom + filtstats[j][1] +filtstats[j][0]
             bottom=0
 
-def plot_feat(feat_importance,feat_names):
+def plot_feat(feat_importance,feat_names,n_run):
     if settings.plotfeatimp == 1:
         plt.figure()
 #        plt.scatter(numpy.array(range(len(feat_importance)))+1,feat_importance,s=2)
@@ -137,10 +137,10 @@ def plot_feat(feat_importance,feat_names):
 #        plt.minorticks_on()
         plt.grid(alpha=0.4,which='both')
         plt.tight_layout()
-        plt.savefig('plots/Feature_imp.png')
+        plt.savefig('plots/Feature_imp_%s.png' %n_run)
         plt.close()
 
-def plot_feat_per_class(one_vs_all_results,feat_names):
+def plot_feat_per_class(one_vs_all_results,feat_names,n):
     plt.figure()
     for i in range(len(one_vs_all_results)):
         plt.step(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])+2)),numpy.concatenate(([0],one_vs_all_results[i]['feat_importance'],[0])),label='class == %s' %one_vs_all_results[i]['uniquetarget_tr_loop'][0][0])
@@ -160,7 +160,7 @@ def plot_feat_per_class(one_vs_all_results,feat_names):
 #    plt.minorticks_on()
     plt.grid(alpha=0.4,which='both')
     plt.tight_layout()
-    plt.savefig('plots/Feature_imp_per_class.png')
+    plt.savefig('plots/Feature_imp_per_class_%s.png' %n)
     plt.close()
 
 def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
