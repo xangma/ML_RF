@@ -10,7 +10,7 @@ othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 double_sub_run = 0
-one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
+one_vs_all = 1                                                              # WARNING. Takes as many runs as there are classes in training set
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -22,7 +22,7 @@ prob_outfile = 'ML_RF_probs'
 log_outfile='ML_RF_logfile'						    # Name of output logfile
 stats_outfile='ML_RF_stats'
 
-output_tree = 0
+output_all_trees = 0
 get_contributions = 0
 
 traindatanum=2500                                                           # Number of objects to train on

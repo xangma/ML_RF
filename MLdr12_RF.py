@@ -18,6 +18,8 @@ import requests
 import treeinterpreter as ti
 from sklearn import metrics
 import markup
+from markup import oneliner as e
+from sklearn import tree
 
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
@@ -293,17 +295,20 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')
         score = clf.score
-        if settings.output_tree == 1:
-    #        feat_names=numpy.array(range(0,n_feat))
-            from sklearn import tree
-            i_tree = 0
-            for tree_in_forest in clf.estimators_:
-                with open('tree_' + str(i_tree) + '.dot', 'w') as my_file:
-                    my_file = tree.export_graphviz(tree_in_forest, out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
-                os.system('dot -Tpng tree_%s.dot -o tree_%s.png' %(i_tree,i_tree))
-                os.remove('tree_%s.dot' %i_tree)
-                i_tree = i_tree + 1        
-                
+        if 'OvsA' not in ind_run_name:
+            if settings.output_all_trees == 1:
+                i_tree = 0
+                for tree_in_forest in clf.estimators_:
+                    with open('plots/tree_' + str(i_tree) + '.dot', 'w') as my_file:
+                        my_file = tree.export_graphviz(tree_in_forest, out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
+                    os.system('dot -Tpng plots/tree_%s.dot -o plots/tree_%s.png' %(i_tree,i_tree))
+                    os.remove('plots/tree_%s.dot' %i_tree)
+                    i_tree = i_tree + 1        
+            else:
+                with open('plots/tree_example.dot', 'w') as my_file:
+                    my_file = tree.export_graphviz(clf.estimators_[0], out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
+                os.system('dot -Tpng plots/tree_example.dot -o plots/tree_example.png')
+                os.remove('plots/tree_example.dot')
         start, end=[],[]
         # Split cats for RAM management
         numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))*10
@@ -356,23 +361,23 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
         numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
     
-    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score
+    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
     if settings.one_vs_all == 1:
         one_vs_all_results = {}
         tree_was_on = 0
-        if settings.output_tree == 1:
+        if settings.output_all_trees == 1:
             tree_was_on = 1
-            settings.output_tree = 0
+            settings.output_all_trees = 0
         for i in range(len(unique_IDS_tr)):
             ind_run_name = 'OvsA_%s_%s' %(uniquetarget_tr[0][i],n)
             unique_IDs_tr_loop=[unique_IDS_tr[i],numpy.float32(99)]
             unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
             one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
         plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
@@ -382,7 +387,7 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
         # PLOTS
         logger.info('Plotting ...')
@@ -402,7 +407,7 @@ for n in range(0,settings.n_runs):
         unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
         run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
         settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
-        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2,clf2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
 if settings.get_images == 1:
     image_IDs = {}
@@ -410,6 +415,7 @@ if settings.get_images == 1:
     for i in range(len(unique_IDS_pr)):
         # create masks
         yymask = yypredict == i
+        index_loop = numpy.where(yymask)
         OBJID_pr_loop = OBJID_pr[yymask]
         result_loop = result[yymask]
         yypredict_loop = yypredict[yymask]
@@ -423,49 +429,68 @@ if settings.get_images == 1:
         bad_mask = probs_loop[:,i] < 0.1
         
         image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask]}
+        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask]}
 
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
-        url_list=[]
+        url_list,url_objid_list,tiresult_list=[],[],[]
         if len(image_IDs[i]['good_ID']) > num_max_images:
             top_good = num_max_images
         else:
             top_good = len(image_IDs[i]['good_ID'])
-        for j in range(0,top_good):        
+        for j in range(0,top_good):   
+            img_ID_good = image_IDs[i]['good_ID'][j]
             img_RA_good = image_IDs[i]['good_RA'][j]
             img_DEC_good = image_IDs[i]['good_DEC'][j]
+            img_index_good = image_IDs[i]['good_index'][j]
+            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
+            tiresult_list.append(tiresult[2])
+            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list})
-        url_list=[]
+        image_IDs[i].update({'good_url':url_list, 'good_contributions' : tiresult_list, 'good_url_objid' : url_objid_list})
+        url_list,url_objid_list,tiresult_list=[],[],[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
         else:
             top_ok = len(image_IDs[i]['ok_ID'])
-        for j in range(0,top_ok):        
+        for j in range(0,top_ok):  
+            img_ID_ok = image_IDs[i]['ok_ID'][j]
             img_RA_ok =  image_IDs[i]['ok_RA'][j]
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
+            img_index_ok = image_IDs[i]['ok_index'][j]
+            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
+            tiresult_list.append(tiresult[2])
+            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list})
-        url_list=[]
+        image_IDs[i].update({'ok_url':url_list,'ok_contributions' : tiresult_list, 'ok_url_objid' : url_objid_list})
+        url_list,url_objid_list,tiresult_list=[],[],[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
         else:
             top_bad = len(image_IDs[i]['bad_ID'])
-        for j in range(0,top_bad):   
+        for j in range(0,top_bad):
+            img_ID_bad = image_IDs[i]['bad_ID'][j]
             img_RA_bad =  image_IDs[i]['bad_RA'][j]
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
+            img_index_bad = image_IDs[i]['bad_index'][j]
+            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
+            tiresult_list.append(tiresult[2])
+            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list})
+        image_IDs[i].update({'bad_url':url_list,'bad_contributions' : tiresult_list, 'bad_url_objid' : url_objid_list})
 
 # Make results html
 os.chdir(settings.programpath)
 html_title='Results for run: %s' %ind_run_name
 page = markup.page()
 page.init(title=html_title)
-html_results=("Results for run: %s" %ind_run_name, "Accuracy: %s" %accuracy)
-page.p(html_results)
+page.p(page.h3("Results for run: %s" %ind_run_name))
+page.a( "Home",href="index.html")
+page.a( "Example Tree",href="trees.html")
+page.a( "Plots",href="plots.html")
+page.a( "Images",href="images.html")
+page.p( "Accuracy: %s" %accuracy)
 page.p("")
 
 page.table(border=1)
@@ -476,21 +501,62 @@ page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)
 page.table.close()
 
 # Write out settings
-
+html_settings=("Number of training objects: %s" %settings.traindatanum,"Number of prediction objects: %s" %settings.predictdatanum\
+,"","Features","    Filters: %s" %settings.filters, "    Colours: %s" %col_names, "    Other: %s" %settings.othertrain)
+page.p(html_settings)
 # Links to plots and images
 
 # Save html
-html_file= open("results.html","w")
+html_file= open("index.html","w")
 html_file.write(page())
 html_file.close()
 
+# Create tree page
+page_tree = markup.page()
+page_tree.init(title=html_title+" Example Tree")
+page_tree.p(page_tree.h3("Results for run: %s Example Tree" %ind_run_name))
+page_tree.a( "Home",href="index.html")
+page_tree.a( "Example Tree",href="trees.html")
+page_tree.a( "Plots",href="plots.html")
+page_tree.a( "Images",href="images.html")
+page_tree.p("Example Tree")
+page_tree.img(src="plots/tree_example.png")
+
+html_file= open("trees.html","w")
+html_file.write(page_tree())
+html_file.close()
+
 # Create pages for plots
+page_plots = markup.page()
+page_plots.init(title=html_title+" Plots")
+page_plots.p(page_plots.h3("Results for run: %s Plots" %ind_run_name))
+page_plots.a( "Home",href="index.html")
+page_plots.a( "Example Tree",href="trees.html")
+page_plots.a( "Plots",href="plots.html")
+page_plots.a( "Images",href="images.html")
+page_plots.p("Overall Feature Importance")
+page_plots.img(src=plots_feat_outname)
+page_plots.p("")
+page_plots.p("Feature importance per class")
+page_plots.img(src=plots_feat_per_class_outname)
 
-page.img(src=plots_feat_outname)
-
+html_file= open("plots.html","w")
+html_file.write(page_plots())
+html_file.close()
 # Create pages for images
+page_images = markup.page()
+page_images.init(title=html_title+" Images")
+page_images.p(page_images.h3("Results for run: %s Images" %ind_run_name))
+page_images.a( "Home",href="index.html")
+page_images.a( "Example Tree",href="trees.html")
+page_images.a( "Plots",href="plots.html")
+page_images.a( "Images",href="images.html")
+page_images.p("")
+page_images.a( e.img( src=image_IDs[0]['good_url'][0]), href=image_IDs[0]['good_url_objid'][0])
 
-page.img(src=image_IDs[0]['good_url'][0])
+html_file= open("images.html","w")
+html_file.write(page_images())
+html_file.close()
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515
