@@ -16,6 +16,9 @@ import logging
 import shutil
 import requests
 import treeinterpreter as ti
+from sklearn import metrics
+import markup
+
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
@@ -39,11 +42,6 @@ logger.addHandler(console)
 
 if 'plots' not in dirs: # Create plots directory  if it doesn't exist
     os.mkdir('plots')
-if 'temp' not in dirs:
-    os.mkdir('temp')
-else:
-    shutil.rmtree('temp')
-    os.mkdir('temp')
 
 def get_function(function_string):
     import importlib
@@ -294,7 +292,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         end = time.time()
         logger.info('Fit ended in %s seconds' %(end-start))
         logger.info('------------')
-        
+        score = clf.score
         if settings.output_tree == 1:
     #        feat_names=numpy.array(range(0,n_feat))
             from sklearn import tree
@@ -329,17 +327,21 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         feat_importance = clf.feature_importances_
         result=numpy.float32(result)
         probs=numpy.float32(probs)
+
+        accuracy = metrics.accuracy_score(result,yypredict)
+        recall = metrics.recall_score(result,yypredict,average=None)
+        precision = metrics.precision_score(result,yypredict,average=None)
+        score = metrics.f1_score(result, yypredict,average=None)
+        
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
 
-    logger.info('Totalling results')
-    n = sum(result == yypredict)
-    logger.info('%s / %s were correct' %(n,predictdatanum))
-    logger.info('That''s %s percent' %((n/predictdatanum)*100))
-    logger.info('------------')
+    logger.info('Recall Score: %s' %recall)
+    logger.info('Precision Score: %s' %precision)
+    logger.info('Accuracy Score: %s' %accuracy)
+    logger.info('F1 Score: %s' %score)
     percentage=(n/predictdatanum)*100
-    resultsstack = numpy.column_stack((XXpredict,result,probs)) # Compile results into table
     
     run_opts.diagnostics([result,yypredict,unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr],'result')
 #    stats=numpy.array([])
@@ -348,22 +350,13 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
     if settings.saveresults == 1:
         logger.info('Saving results')
         logger.info('------------')
-        if settings.resultsstack_save == 1:
-            numpy.savetxt(settings.outfile,resultsstack)
+
         numpy.savetxt(settings.result_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
         numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
         numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
     
-    # PLOTS
-    logger.info('Plotting ...')
-    if 'OvsA' not in ind_run_name:
-        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
-        plots.plot_bandvprob(resultsstack,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
-        plots.plot_colourvprob(resultsstack,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
-        plots.plot_feat(feat_importance,feat_names,n_run)
-    
-    return result,feat_importance,probs,bias,contributions
+    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
@@ -379,9 +372,9 @@ for n in range(0,settings.n_runs):
             unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-            result_one_vs_all = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
-            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result_one_vs_all[0],'feat_importance' : result_one_vs_all[1],'uniquetarget_tr_loop' : uniquetarget_tr_loop}
-        plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+        plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
     #        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
         if tree_was_on == 1:
@@ -389,19 +382,27 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result=run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
-if settings.double_sub_run == 1:
-    XX = numpy.column_stack((XX,subclass_tr))
-    XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
-    n_feat=n_feat+1
-    yy=subclass_tr
-    yypredict=subclass_pr
-    logger.info('Starting *SECOND* MLA run')
-    unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
-    run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
-    settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
-    result2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat)
+        # PLOTS
+        logger.info('Plotting ...')
+        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
+        plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
+        plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
+        plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
+
+    if settings.double_sub_run == 1:
+        XX = numpy.column_stack((XX,subclass_tr))
+        XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
+        n_feat=n_feat+1
+        yy=subclass_tr
+        yypredict=subclass_pr
+        logger.info('Starting *SECOND* MLA run')
+        ind_run_name = 'DSR_%s' %n
+        unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
+        run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
+        settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
+        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
 if settings.get_images == 1:
     image_IDs = {}
@@ -410,74 +411,86 @@ if settings.get_images == 1:
         # create masks
         yymask = yypredict == i
         OBJID_pr_loop = OBJID_pr[yymask]
-        result_loop = result[0][yymask]
+        result_loop = result[yymask]
         yypredict_loop = yypredict[yymask]
-        probs_loop = result[2][yymask]
+        probs_loop = probs[yymask]
         RA_pr_loop = RA_pr[yymask]
         DEC_pr_loop = DEC_pr[yymask]
         specz_pr_loop = specz_pr[yymask]
-        # for i in range (0,6)
+        
         good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
-        # put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as good_res
         ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
-        # where prob[j] >.45 && prob[j] < .55
-        # put ID, prob, RA, DEC, CLASS, CLASSNAME in inages dict as ok_res
         bad_mask = probs_loop[:,i] < 0.1
+        
         image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
         , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
         , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask]}
-    os.chdir('temp')
-    dirs_temp = os.listdir()
+
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
+        url_list=[]
         if len(image_IDs[i]['good_ID']) > num_max_images:
             top_good = num_max_images
         else:
             top_good = len(image_IDs[i]['good_ID'])
         for j in range(0,top_good):        
-            img_ID_good = image_IDs[i]['good_ID'][j]
             img_RA_good = image_IDs[i]['good_RA'][j]
             img_DEC_good = image_IDs[i]['good_DEC'][j]
-            img_SPECZ_good = image_IDs[i]['good_specz'][j]
-            img_result_good = image_IDs[i]['good_result'][j]
-            img_probs_good = image_IDs[i]['good_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good)
-            response = requests.get(url, stream=True)
-            with open('good_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_good,round(img_SPECZ_good,5),img_result_good,img_probs_good[img_result_good]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
+        image_IDs[i].update({'good_url':url_list})
+        url_list=[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
         else:
             top_ok = len(image_IDs[i]['ok_ID'])
         for j in range(0,top_ok):        
-            img_ID_ok =  image_IDs[i]['ok_ID'][j]
             img_RA_ok =  image_IDs[i]['ok_RA'][j]
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
-            img_SPECZ_ok = image_IDs[i]['ok_specz'][j]
-            img_result_ok = image_IDs[i]['ok_result'][j]
-            img_probs_ok = image_IDs[i]['ok_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok)
-            response = requests.get(url, stream=True)
-            with open('ok_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_ok,round(img_SPECZ_ok,5),img_result_ok,img_probs_ok[img_result_ok]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
+        image_IDs[i].update({'ok_url':url_list})
+        url_list=[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
         else:
             top_bad = len(image_IDs[i]['bad_ID'])
         for j in range(0,top_bad):   
-            img_ID_bad =  image_IDs[i]['bad_ID'][j]
             img_RA_bad =  image_IDs[i]['bad_RA'][j]
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
-            img_SPECZ_bad = image_IDs[i]['bad_specz'][j]
-            img_result_bad = image_IDs[i]['bad_result'][j]
-            img_probs_bad = image_IDs[i]['bad_probs'][j]
-            url = 'http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad)
-            response = requests.get(url, stream=True)
-            with open('bad_class_%s_ID_%s_specz_%s_pred_%s_prob_%s.jpg'%(i,img_ID_bad,round(img_SPECZ_bad,5),img_result_bad,img_probs_bad[img_result_bad]), 'wb') as out_file:
-                shutil.copyfileobj(response.raw, out_file)
-            del response
-            time.sleep(0.1)
+            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
+        image_IDs[i].update({'bad_url':url_list})
+
+# Make results html
+os.chdir(settings.programpath)
+html_title='Results for run: %s' %ind_run_name
+page = markup.page()
+page.init(title=html_title)
+html_results=("Results for run: %s" %ind_run_name, "Accuracy: %s" %accuracy)
+page.p(html_results)
+page.p("")
+
+page.table(border=1)
+page.tr(),page.th(""),page.th(uniquetarget_tr[0][0]),page.th(uniquetarget_tr[0][1]),page.th(uniquetarget_tr[0][2]),page.tr.close()
+page.tr(),page.td(),page.b("Recall"),page.td.close(),page.td(round(recall[0],5)),page.td(round(recall[1],5)),page.td(round(recall[2],5)),page.tr.close()
+page.tr(),page.td(),page.b("Precision"),page.td.close(),page.td(round(precision[0],5)),page.td(round(precision[1],5)),page.td(round(precision[2],5)),page.tr.close()
+page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)),page.td(round(score[1],5)),page.td(round(score[2],5)),page.tr.close()
+page.table.close()
+
+# Write out settings
+
+# Links to plots and images
+
+# Save html
+html_file= open("results.html","w")
+html_file.write(page())
+html_file.close()
+
+# Create pages for plots
+
+page.img(src=plots_feat_outname)
+
+# Create pages for images
+
+page.img(src=image_IDs[0]['good_url'][0])
 
 logger.removeHandler(console)
+#http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515
