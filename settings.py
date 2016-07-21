@@ -9,7 +9,6 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
 
@@ -17,10 +16,8 @@ pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
 
 saveresults=1                                                               # Save results or not? 
-resultsstack_save=0                                                         # Save all results? WARNING: Very large table (>1gb probably)                                                         
-outfile = 'ML_RF_resultsstack'                                          # Filename for results
 feat_outfile = 'ML_RF_feat_'                                  # Filename for feature importance results
-result_outfile = 'ML_RF_results'
+result_outfile = 'ML_RF_results'                                          # Filename for results
 prob_outfile = 'ML_RF_probs'
 log_outfile='ML_RF_logfile'						    # Name of output logfile
 stats_outfile='ML_RF_stats'
@@ -52,7 +49,7 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob=0								    # Plot hist of filter band vs prob for each class
-plotcolourvprob=0    
+plotbandvprob=1								    # Plot hist of filter band vs prob for each class
+plotcolourvprob=1    
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 get_images=1
