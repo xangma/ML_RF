@@ -19,6 +19,12 @@ These are optional functions that the main code dips out to. Most can be enabled
 ####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
+19-20-21/7/16
+- Cleaning up plots and code
+- Added html results output by default (still in development)
+- Added function for multiple runs (n_runs setting)
+- Added run names
+
 17/7/16
 - Added support for treeinterpreter! This currently makes it quite slow, might need to do something about that soon. Have turned the number of objects to be predicted down in the meantime. This function gives the contributions of each feature for each object for each class. Now we can see which feature helped decide each object individually!
 - Finally added the propagation of feature names. This means plots will actually be labelled and the tree has interpretable labels too. Yay.
