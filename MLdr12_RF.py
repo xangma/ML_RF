@@ -313,7 +313,6 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('------------')
         start = time.time()
         result,probs,bias,contributions=[],[],[],[]
-        training_prediction=clf.predict(XX[:,0:n_feat])
         XXpredict_cats=numpy.array_split(XXpredict,numcats)
         logger.info('Splitting predict array into %s' %numcats)
         logger.info('------------')
@@ -476,12 +475,22 @@ page.tr(),page.td(),page.b("Precision"),page.td.close(),page.td(round(precision[
 page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)),page.td(round(score[1],5)),page.td(round(score[2],5)),page.tr.close()
 page.table.close()
 
-page.img(width=200,height=200,src=image_IDs[0]['good_url'][0])
-page.img(width=200,height=200,src=plots_feat_outname)
+# Write out settings
 
+# Links to plots and images
+
+# Save html
 html_file= open("results.html","w")
 html_file.write(page())
 html_file.close()
+
+# Create pages for plots
+
+page.img(src=plots_feat_outname)
+
+# Create pages for images
+
+page.img(src=image_IDs[0]['good_url'][0])
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515
