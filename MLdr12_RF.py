@@ -362,14 +362,6 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
         numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
     
-    # PLOTS
-    logger.info('Plotting ...')
-    if 'OvsA' not in ind_run_name:
-        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
-        plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
-        plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
-        plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n_run)
-    
     return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score
 
 for n in range(0,settings.n_runs):
@@ -397,6 +389,13 @@ for n in range(0,settings.n_runs):
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
         result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+
+        # PLOTS
+        logger.info('Plotting ...')
+        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
+        plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
+        plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
+        plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
@@ -475,6 +474,7 @@ html_results=("Results for run: %s" %ind_run_name,"Classes: %s" %uniquetarget_tr
 page.p(html_results)
 page.p("")
 page.img(width=200,height=200,src=image_IDs[0]['good_url'][0])
+page.img(width=200,height=200,src=plots_feat_outname)
 
 html_file= open("results.html","w")
 html_file.write(page())
