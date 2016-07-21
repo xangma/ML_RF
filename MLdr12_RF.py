@@ -338,11 +338,6 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         logger.info('Predict ended in %s seconds' %(end-start))
         logger.info('------------')
 
-#    logger.info('Totalling results')
-#    n = sum(result == yypredict)
-#    logger.info('%s / %s were correct' %(n,predictdatanum))
-#    logger.info('That''s %s percent' %((n/predictdatanum)*100))
-#    logger.info('------------')
     logger.info('Recall Score: %s' %recall)
     logger.info('Precision Score: %s' %precision)
     logger.info('Accuracy Score: %s' %accuracy)
@@ -373,12 +368,12 @@ for n in range(0,settings.n_runs):
             tree_was_on = 1
             settings.output_tree = 0
         for i in range(len(unique_IDS_tr)):
-            ind_run_name_ova = 'OvsA_%s_%s' %(uniquetarget_tr[0][i],n)
+            ind_run_name = 'OvsA_%s_%s' %(uniquetarget_tr[0][i],n)
             unique_IDs_tr_loop=[unique_IDS_tr[i],numpy.float32(99)]
             unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name_ova,n)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
             one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
         plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
@@ -404,11 +399,11 @@ for n in range(0,settings.n_runs):
         yy=subclass_tr
         yypredict=subclass_pr
         logger.info('Starting *SECOND* MLA run')
-        ind_run_name_DSR = 'DSR_%s' %n
+        ind_run_name = 'DSR_%s' %n
         unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
         run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
         settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
-        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name_DSR,n)
+        result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
 if settings.get_images == 1:
     image_IDs = {}
@@ -470,9 +465,17 @@ os.chdir(settings.programpath)
 html_title='Results for run: %s' %ind_run_name
 page = markup.page()
 page.init(title=html_title)
-html_results=("Results for run: %s" %ind_run_name,"Classes: %s" %uniquetarget_tr[0], "Recall Score: %s" %recall,"Precision Score: %s" %precision, "Accuracy: %s" %accuracy,"F1 Score: %s" %score)
+html_results=("Results for run: %s" %ind_run_name, "Accuracy: %s" %accuracy)
 page.p(html_results)
 page.p("")
+
+page.table(border=1)
+page.tr(),page.th(""),page.th(uniquetarget_tr[0][0]),page.th(uniquetarget_tr[0][1]),page.th(uniquetarget_tr[0][2]),page.tr.close()
+page.tr(),page.td(),page.b("Recall"),page.td.close(),page.td(round(recall[0],5)),page.td(round(recall[1],5)),page.td(round(recall[2],5)),page.tr.close()
+page.tr(),page.td(),page.b("Precision"),page.td.close(),page.td(round(precision[0],5)),page.td(round(precision[1],5)),page.td(round(precision[2],5)),page.tr.close()
+page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)),page.td(round(score[1],5)),page.td(round(score[2],5)),page.tr.close()
+page.table.close()
+
 page.img(width=200,height=200,src=image_IDs[0]['good_url'][0])
 page.img(width=200,height=200,src=plots_feat_outname)
 
