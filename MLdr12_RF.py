@@ -445,10 +445,10 @@ if settings.get_images == 1:
             img_DEC_good = image_IDs[i]['good_DEC'][j]
             img_index_good = image_IDs[i]['good_index'][j]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
-            tiresult_list.append(tiresult[2])
+            tiresult_list.append(tiresult)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list, 'good_contributions' : tiresult_list, 'good_url_objid' : url_objid_list})
+        image_IDs[i].update({'good_url':url_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list})
         url_list,url_objid_list,tiresult_list=[],[],[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
@@ -460,10 +460,10 @@ if settings.get_images == 1:
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
             img_index_ok = image_IDs[i]['ok_index'][j]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
-            tiresult_list.append(tiresult[2])
+            tiresult_list.append(tiresult)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list,'ok_contributions' : tiresult_list, 'ok_url_objid' : url_objid_list})
+        image_IDs[i].update({'ok_url':url_list,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list})
         url_list,url_objid_list,tiresult_list=[],[],[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
@@ -475,12 +475,12 @@ if settings.get_images == 1:
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
             img_index_bad = image_IDs[i]['bad_index'][j]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
-            tiresult_list.append(tiresult[2])
+            tiresult_list.append(tiresult)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list,'bad_contributions' : tiresult_list, 'bad_url_objid' : url_objid_list})
+        image_IDs[i].update({'bad_url':url_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list})
 
-# Make results html
+# Make index html
 os.chdir(settings.programpath)
 html_title='Results for run: %s' %ind_run_name
 page = markup.page()
@@ -502,9 +502,9 @@ page.table.close()
 
 # Write out settings
 html_settings=("Number of training objects: %s" %settings.traindatanum,"Number of prediction objects: %s" %settings.predictdatanum\
-,"","Features","    Filters: %s" %settings.filters, "    Colours: %s" %col_names, "    Other: %s" %settings.othertrain)
+,"","Random Forest Settings:",clf\
+,"","Features:","    Filters: %s" %settings.filters, "    Colours: %s" %col_names, "    Other: %s" %settings.othertrain)
 page.p(html_settings)
-# Links to plots and images
 
 # Save html
 html_file= open("index.html","w")
@@ -557,25 +557,77 @@ page_images.a( "Plots",href="plots.html")
 page_images.a( "Images",href="images.html")
 page_images.p("")
 
-page_images.table(border=1)
-page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[0]['good_url'][0]), href=image_IDs[0]['good_url_objid'][0]),page_images.td.close(),page_images.tr.close()
-page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[0]['class']])),page_images.tr.close()
-page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[0]['good_result'][0]])),page_images.tr.close()
-page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[0]['good_ID'][0])),page_images.tr.close()
-page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[0]['good_specz'][0])),page_images.tr.close()
-page_images.table.close()
+for k in range(len(image_IDs)):
+    for j in range(len(image_IDs[k]['good_url'])):
+        page_images.p("")
+        page_images.table(border=1)
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_url'][j]), href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['good_result'][j]])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['good_ID'][j])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['good_specz'][j])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_probs'][j][0])),page_images.td(str(image_IDs[k]['good_probs'][j][1])),page_images.td(str(image_IDs[k]['good_probs'][j][2])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][2])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        for i in range(len(feat_names)):
+            page_images.tr()
+            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,2][i],5))
+            page_images.tr.close()
 
-page_images.table(border=1)
-page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[0]['good_probs'][0][0])),page_images.td(str(image_IDs[0]['good_probs'][0][1])),page_images.td(str(image_IDs[0]['good_probs'][0][2])),page_images.tr.close()
-page_images.table.close()
+for k in range(len(image_IDs)):
+    for j in range(len(image_IDs[k]['ok_url'])):
+        page_images.p("")
+        page_images.table(border=1)
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_url'][j]), href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['ok_result'][j]])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_ID'][j])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_specz'][j])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_probs'][j][0])),page_images.td(str(image_IDs[k]['ok_probs'][j][1])),page_images.td(str(image_IDs[k]['ok_probs'][j][2])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][2])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        for i in range(len(feat_names)):
+            page_images.tr()
+            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,2][i],5))
+            page_images.tr.close()
 
-page_images.table(border=1)
-page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-for i in range(len(feat_names)):
-    page_images.tr()
-    page_images.td(feat_names[i]),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,0][i],5)),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,1][i],5)),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,2][i],5))
-    page_images.tr.close()
+for k in range(len(image_IDs)):
+    for j in range(len(image_IDs[k]['bad_url'])):
+        page_images.p("")
+        page_images.table(border=1)
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_url'][j]), href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['bad_result'][j]])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_ID'][j])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_specz'][j])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_probs'][j][0])),page_images.td(str(image_IDs[k]['bad_probs'][j][1])),page_images.td(str(image_IDs[k]['bad_probs'][j][2])),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][2])),page_images.tr.close()
+        page_images.table.close()
+        
+        page_images.table(border=1)
+        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        for i in range(len(feat_names)):
+            page_images.tr()
+            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,2][i],5))
+            page_images.tr.close()
 
 html_file= open("images.html","w")
 html_file.write(page_images())
