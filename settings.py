@@ -50,6 +50,6 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
 plotbandvprob=1								    # Plot hist of filter band vs prob for each class
-plotcolourvprob=1    
+plotcolourvprob=1   
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 get_images=1

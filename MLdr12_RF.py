@@ -434,7 +434,7 @@ if settings.get_images == 1:
 
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
-        url_list,url_objid_list,tiresult_list=[],[],[]
+        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
         if len(image_IDs[i]['good_ID']) > num_max_images:
             top_good = num_max_images
         else:
@@ -444,12 +444,14 @@ if settings.get_images == 1:
             img_RA_good = image_IDs[i]['good_RA'][j]
             img_DEC_good = image_IDs[i]['good_DEC'][j]
             img_index_good = image_IDs[i]['good_index'][j]
+            img_values_loop = XXpredict[:,0:n_feat][img_index_good]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
             tiresult_list.append(tiresult)
+            img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list})
-        url_list,url_objid_list,tiresult_list=[],[],[]
+        image_IDs[i].update({'good_url':url_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
+        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
         else:
@@ -459,12 +461,14 @@ if settings.get_images == 1:
             img_RA_ok =  image_IDs[i]['ok_RA'][j]
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
             img_index_ok = image_IDs[i]['ok_index'][j]
+            img_values_loop = XXpredict[:,0:n_feat][img_index_ok]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
             tiresult_list.append(tiresult)
+            img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list})
-        url_list,url_objid_list,tiresult_list=[],[],[]
+        image_IDs[i].update({'ok_url':url_list,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
+        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
         else:
@@ -474,11 +478,13 @@ if settings.get_images == 1:
             img_RA_bad =  image_IDs[i]['bad_RA'][j]
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
             img_index_bad = image_IDs[i]['bad_index'][j]
+            img_values_loop = XXpredict[:,0:n_feat][img_index_bad]
             tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
             tiresult_list.append(tiresult)
+            img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list})
+        image_IDs[i].update({'bad_url':url_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
 
 # Make index html
 os.chdir(settings.programpath)
@@ -544,6 +550,11 @@ for i in range(len(allfiltplots)):
     page_plots.p(["",allfiltplots[i]])
     page_plots.img(src=allfiltplots[i])
 
+allfiltplots_cols= [s for s in plots_colourvprob_outnames if 'allfilt' in s]
+for i in range(len(allfiltplots_cols)):
+    page_plots.p(["",allfiltplots_cols[i]])
+    page_plots.img(src=allfiltplots_cols[i])
+
 html_file= open("plots.html","w")
 html_file.write(page_plots())
 html_file.close()
@@ -573,12 +584,12 @@ for k in range(len(image_IDs)):
         page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_probs'][j][0])),page_images.td(str(image_IDs[k]['good_probs'][j][1])),page_images.td(str(image_IDs[k]['good_probs'][j][2])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][2])),page_images.tr.close()
         page_images.table.close()
-        
+        page_images.p("Contributions to Probability")
         page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
         for i in range(len(feat_names)):
             page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,2][i],5))
+            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['good_values'][j][i])),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,2][i],5))
             page_images.tr.close()
 
 for k in range(len(image_IDs)):
@@ -597,12 +608,12 @@ for k in range(len(image_IDs)):
         page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_probs'][j][0])),page_images.td(str(image_IDs[k]['ok_probs'][j][1])),page_images.td(str(image_IDs[k]['ok_probs'][j][2])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][2])),page_images.tr.close()
         page_images.table.close()
-        
+        page_images.p("Contributions to Probability")       
         page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
         for i in range(len(feat_names)):
             page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,2][i],5))
+            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['ok_values'][j][i])),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,2][i],5))
             page_images.tr.close()
 
 for k in range(len(image_IDs)):
@@ -621,12 +632,12 @@ for k in range(len(image_IDs)):
         page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_probs'][j][0])),page_images.td(str(image_IDs[k]['bad_probs'][j][1])),page_images.td(str(image_IDs[k]['bad_probs'][j][2])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][2])),page_images.tr.close()
         page_images.table.close()
-        
+        page_images.p("Contributions to Probability")
         page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
         for i in range(len(feat_names)):
             page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,2][i],5))
+            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['bad_values'][j][i])),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,2][i],5))
             page_images.tr.close()
 
 html_file= open("images.html","w")

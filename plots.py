@@ -37,7 +37,7 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
-        names=['Star','QSO','Galaxy']
+        names=['Galaxy','QSO','Star']
         for k in range(0,probshape):
             for j in range(len(filtstats)):
                 fig=plt.figure()
@@ -48,7 +48,8 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
                     #print('i: %s' %i)
                     #print('bottom: %s' %bottom)
                     #print(names[k])
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    mask = XXpredict[:,-1] == k
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     cb=plt.colorbar(norm=LogNorm())
                     cb.ax.tick_params(labelsize=8)
                     plt.ylabel('Prob. of %s' %names[k],size=8)
@@ -64,7 +65,7 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
                 
                 for i in range(filtstats[j][0]): # Plot for all filters
                     fig=plt.figure()
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     plt.colorbar(norm=LogNorm())
                     plt.ylabel('Prob. of %s' %names[k])
                     plt.xlabel('%s apparent mag' %settings.filters[j][i])
@@ -89,7 +90,7 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
-        names=['Star','QSO','Galaxy']
+        names=['Galaxy','QSO','Star']
         numplots=0
         for k in range(len(filtstats)):
             numplots = numplots+len(combs[k])
@@ -108,7 +109,8 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
 #                    plot_colourvprob_log.info('bottom+filtstats[j][0]: %s' %(bottom+filtstats[j][0]))
 #                    plot_colourvprob_log.info('Colour: %s - %s' %(settings.filters[j][combs[j][i][0]],settings.filters[j][combs[j][i][1]]))
 #                    plot_colourvprob_log.info(names[k])
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    mask = XXpredict[:,-1] == k
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     cb=plt.colorbar(norm=LogNorm())
                     cb.ax.tick_params(labelsize=8)
                     plt.ylabel('Prob. of %s' %names[k],size=8)
@@ -124,7 +126,7 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
                 
                 for i in range(filtstats[j][1]): # Plot for all filters
                     fig=plt.figure()
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     plt.colorbar(norm=LogNorm())
                     plt.ylabel('Prob. of %s' %names[k])
                     plt.xlabel('%s - %s' %(settings.filters[j][combs[j][i][0]],settings.filters[j][combs[j][i][1]]))
@@ -208,3 +210,6 @@ def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
     plt.grid(alpha=0.4,which='both')
     plt.savefig('plots/Feature_imp_per_class_oth.png')
     plt.close()
+
+#def plot_col_rad(XXpredict,probs,feat_names,filtstats):
+    
