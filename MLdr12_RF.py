@@ -429,8 +429,8 @@ if settings.get_images == 1:
         bad_mask = probs_loop[:,i] < 0.1
         
         image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask]}
+        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
 
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
@@ -539,6 +539,10 @@ page_plots.img(src=plots_feat_outname)
 page_plots.p("")
 page_plots.p("Feature importance per class")
 page_plots.img(src=plots_feat_per_class_outname)
+allfiltplots= [s for s in plots_bandvprob_outnames if 'allfilt' in s]
+for i in range(len(allfiltplots)):
+    page_plots.p(["",allfiltplots[i]])
+    page_plots.img(src=allfiltplots[i])
 
 html_file= open("plots.html","w")
 html_file.write(page_plots())
@@ -552,7 +556,26 @@ page_images.a( "Example Tree",href="trees.html")
 page_images.a( "Plots",href="plots.html")
 page_images.a( "Images",href="images.html")
 page_images.p("")
-page_images.a( e.img( src=image_IDs[0]['good_url'][0]), href=image_IDs[0]['good_url_objid'][0])
+
+page_images.table(border=1)
+page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[0]['good_url'][0]), href=image_IDs[0]['good_url_objid'][0]),page_images.td.close(),page_images.tr.close()
+page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[0]['class']])),page_images.tr.close()
+page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[0]['good_result'][0]])),page_images.tr.close()
+page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[0]['good_ID'][0])),page_images.tr.close()
+page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[0]['good_specz'][0])),page_images.tr.close()
+page_images.table.close()
+
+page_images.table(border=1)
+page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[0]['good_probs'][0][0])),page_images.td(str(image_IDs[0]['good_probs'][0][1])),page_images.td(str(image_IDs[0]['good_probs'][0][2])),page_images.tr.close()
+page_images.table.close()
+
+page_images.table(border=1)
+page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+for i in range(len(feat_names)):
+    page_images.tr()
+    page_images.td(feat_names[i]),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,0][i],5)),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,1][i],5)),page_images.td(round(image_IDs[0]['good_contributions'][0][0][:,2][i],5))
+    page_images.tr.close()
 
 html_file= open("images.html","w")
 html_file.write(page_images())
