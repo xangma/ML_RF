@@ -25,14 +25,14 @@ stats_outfile='ML_RF_stats'
 output_all_trees = 0
 get_contributions = 0
 
-traindatanum=2500                                                           # Number of objects to train on
-predictdatanum=100000                                                       # Number of objects to predict
+traindatanum=25000                                                           # Number of objects to train on
+predictdatanum=200000                                                       # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 256, 'n_jobs': 4,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
+MLAset = {'n_estimators': 256, 'n_jobs': 4,'bootstrap':True,'verbose':True,'max_depth':None,'class_weight':'balanced'}         # MLA settings
 actually_run=1   
 n_runs = 1                                                                 # Actually run the MLA
 
@@ -52,4 +52,5 @@ plotsubclasshist=0                                                          # Pl
 plotbandvprob=1								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=1   
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
+plot_col_rad = 1
 get_images=1

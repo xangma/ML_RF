@@ -214,7 +214,6 @@ def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
     plt.close()
 
 
-
 def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
     if settings.plot_col_rad==1:
         dirs=os.listdir(path)
@@ -229,13 +228,17 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                 bottom=0
                 for j in range(len(filtstats)): # For all the filter sets
                     for i in range(filtstats[j][1]): # Plot for all filters
-                        plt.figure()
-                        mask_pred = result == l
-                        mask_true = yypredict == l
+                        fig=plt.figure()
+    #                        mask_true = yypredict == l
+    #                        mask_pred = result == l
+                        #
+                        findalltrue = yypredict == l
+                        findpredtrue = (yypredict == l) & (result == yypredict)
+                        #
                         outliermask1=is_outlier(XXpredict[:,bottom+filtstats[j][0]+i])
                         outliermask2 = is_outlier(XXpredict[:,ot_index])
-                        totalmask_pred = (~outliermask1) & (~outliermask2) & (mask_pred)
-                        totalmask_true = (~outliermask1) & (~outliermask2) & (mask_true)
+                        totalmask_pred = (~outliermask1) & (~outliermask2) & (findpredtrue)
+                        totalmask_true = (~outliermask1) & (~outliermask2) & (findalltrue)
                         # plot
                         hist_pred, xedges, yedges = numpy.histogram2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80)#,range=[[min(XXpredict[:,42]),max(XXpredict[:,42])],[min(XXpredict[:,49]),max(XXpredict[:,49])]])
                         hist_true, xedges, yedges = numpy.histogram2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80)#,range=[[min(XXpredict[:,42]),max(XXpredict[:,42])],[min(XXpredict[:,49]),max(XXpredict[:,49])]])
@@ -250,7 +253,7 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                         plt.tight_layout()
                         outname='plots/'+savedir+'/col_rad _%s_filt_%s_%s_%s_vs_%s.png' %(uniquetarget_tr[0][l],j,i,feat_names[bottom+filtstats[j][0]+i], feat_names[ot_index])
                         plt.savefig(outname)
-                        plt.close()
+                        plt.close(fig)
                     bottom=bottom + filtstats[j][1] +filtstats[j][0]
 
 
