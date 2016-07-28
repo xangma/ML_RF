@@ -13,8 +13,6 @@ import astropy.io.fits as fits
 import time
 import plots
 import logging
-import shutil
-import requests
 import treeinterpreter as ti
 from sklearn import metrics
 import markup
@@ -148,6 +146,7 @@ classnames_pr=preddata[settings.predict[:-3]]
 subclass_pr = preddata['SPEC_SUBCLASS_ID']
 subclass_names_pr = preddata['SPEC_SUBCLASS']
 OBJID_pr = preddata['OBJID']
+SPECOBJID_pr = preddata['SPECOBJID']
 RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
 specz_pr = preddata['SPECZ']
 
@@ -155,8 +154,8 @@ XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack tra
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
-XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
- = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
+XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+ = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
 
 XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
@@ -166,6 +165,7 @@ classnames_tr=classnames_tr[0:traindatanum] # Do same for classnames
 classnames_pr=classnames_pr[0:predictdatanum]
 OBJID_tr = OBJID_tr[0:traindatanum]
 OBJID_pr = OBJID_pr[0:predictdatanum]
+SPECOBJID_pr = SPECOBJID_pr[0:predictdatanum]
 RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
 RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
 specz_tr,specz_pr = specz_tr[0:traindatanum],specz_pr[0:predictdatanum]
@@ -395,6 +395,7 @@ for n in range(0,settings.n_runs):
         plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
         plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
         plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
+        plots.plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
@@ -417,6 +418,7 @@ if settings.get_images == 1:
         yymask = yypredict == i
         index_loop = numpy.where(yymask)
         OBJID_pr_loop = OBJID_pr[yymask]
+        SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
         result_loop = result[yymask]
         yypredict_loop = yypredict[yymask]
         probs_loop = probs[yymask]
@@ -428,19 +430,20 @@ if settings.get_images == 1:
         ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
         bad_mask = probs_loop[:,i] < 0.1
         
-        image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
+        image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_SPECOBJID' : SPECOBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
+        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_SPECOBJID' : SPECOBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
 
     num_max_images = 10
     for i in range(len(unique_IDS_pr)):
-        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
+        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
         if len(image_IDs[i]['good_ID']) > num_max_images:
             top_good = num_max_images
         else:
             top_good = len(image_IDs[i]['good_ID'])
         for j in range(0,top_good):   
             img_ID_good = image_IDs[i]['good_ID'][j]
+            img_SPECOBJID_good = image_IDs[i]['good_SPECOBJID'][j]
             img_RA_good = image_IDs[i]['good_RA'][j]
             img_DEC_good = image_IDs[i]['good_DEC'][j]
             img_index_good = image_IDs[i]['good_index'][j]
@@ -449,15 +452,17 @@ if settings.get_images == 1:
             tiresult_list.append(tiresult)
             img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
+            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_good)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
-        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
+        image_IDs[i].update({'good_url':url_list,'good_spectra' : url_spectra_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
+        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
         if len(image_IDs[i]['ok_ID']) > num_max_images:
             top_ok = num_max_images
         else:
             top_ok = len(image_IDs[i]['ok_ID'])
         for j in range(0,top_ok):  
             img_ID_ok = image_IDs[i]['ok_ID'][j]
+            img_SPECOBJID_ok = image_IDs[i]['ok_SPECOBJID'][j]
             img_RA_ok =  image_IDs[i]['ok_RA'][j]
             img_DEC_ok = image_IDs[i]['ok_DEC'][j]
             img_index_ok = image_IDs[i]['ok_index'][j]
@@ -466,15 +471,17 @@ if settings.get_images == 1:
             tiresult_list.append(tiresult)
             img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
+            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_ok)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
-        url_list,url_objid_list,tiresult_list,img_values_list=[],[],[],[]
+        image_IDs[i].update({'ok_url':url_list,'ok_spectra' : url_spectra_list ,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
+        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
         if len(image_IDs[i]['bad_ID']) > num_max_images:
             top_bad = num_max_images
         else:
             top_bad = len(image_IDs[i]['bad_ID'])
         for j in range(0,top_bad):
             img_ID_bad = image_IDs[i]['bad_ID'][j]
+            img_SPECOBJID_bad = image_IDs[i]['bad_SPECOBJID'][j]
             img_RA_bad =  image_IDs[i]['bad_RA'][j]
             img_DEC_bad = image_IDs[i]['bad_DEC'][j]
             img_index_bad = image_IDs[i]['bad_index'][j]
@@ -483,8 +490,9 @@ if settings.get_images == 1:
             tiresult_list.append(tiresult)
             img_values_list.append(img_values_loop)
             url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
+            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_bad)
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
+        image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
 
 # Make index html
 os.chdir(settings.programpath)
@@ -572,7 +580,7 @@ for k in range(len(image_IDs)):
     for j in range(len(image_IDs[k]['good_url'])):
         page_images.p("")
         page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_url'][j]), href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_url'][j]), href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_spectra'][j]),width=200,height=143,href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['good_result'][j]])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['good_ID'][j])),page_images.tr.close()
@@ -596,7 +604,7 @@ for k in range(len(image_IDs)):
     for j in range(len(image_IDs[k]['ok_url'])):
         page_images.p("")
         page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_url'][j]), href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_url'][j]), href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_spectra'][j]),width=200,height=143, href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['ok_result'][j]])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_ID'][j])),page_images.tr.close()
@@ -620,7 +628,7 @@ for k in range(len(image_IDs)):
     for j in range(len(image_IDs[k]['bad_url'])):
         page_images.p("")
         page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_url'][j]), href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.tr.close()
+        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_url'][j]), href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_spectra'][j]),width=200,height=143, href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['bad_result'][j]])),page_images.tr.close()
         page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_ID'][j])),page_images.tr.close()
