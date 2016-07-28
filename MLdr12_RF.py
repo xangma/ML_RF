@@ -325,7 +325,8 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             logger.info('Predicting cat %s/%s' %(i,len(XXpredict_cats)))
             result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
             probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
-            if settings.get_contributions == 1:            
+            if settings.get_contributions == 1:           
+                logger.info('Getting contributions from predict catalogue %s' %i)
                 tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
                 contributions.extend(tiresult[2])
                 bias = tiresult[1][0]
