@@ -53,4 +53,5 @@ plotbandvprob=1								    # Plot hist of filter band vs prob for each class
 plotcolourvprob=1   
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 plot_col_rad = 1
+
 get_images=1

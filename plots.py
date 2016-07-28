@@ -229,26 +229,26 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                 for j in range(len(filtstats)): # For all the filter sets
                     for i in range(filtstats[j][1]): # Plot for all filters
                         fig=plt.figure()
-    #                        mask_true = yypredict == l
-    #                        mask_pred = result == l
+                        #                        mask_true = yypredict == l
+                        #                        mask_pred = result == l
                         #
                         findalltrue = yypredict == l
                         findpredtrue = (yypredict == l) & (result == yypredict)
                         #
                         outliermask1=is_outlier(XXpredict[:,bottom+filtstats[j][0]+i])
                         outliermask2 = is_outlier(XXpredict[:,ot_index])
-                        totalmask_pred = (~outliermask1) & (~outliermask2) & (findpredtrue)
-                        totalmask_true = (~outliermask1) & (~outliermask2) & (findalltrue)
+                        totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
+                        totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
                         # plot
-                        hist_pred, xedges, yedges = numpy.histogram2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80)#,range=[[min(XXpredict[:,42]),max(XXpredict[:,42])],[min(XXpredict[:,49]),max(XXpredict[:,49])]])
-                        hist_true, xedges, yedges = numpy.histogram2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80)#,range=[[min(XXpredict[:,42]),max(XXpredict[:,42])],[min(XXpredict[:,49]),max(XXpredict[:,49])]])
+                        hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80,norm=LogNorm())
+                        hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80,norm=LogNorm(),range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
                         hist = (hist_pred/hist_true)
                         Zm = ma.masked_where(~numpy.isfinite(hist),hist)
                         xpos, ypos = numpy.meshgrid(xedges,yedges)
                         plt.pcolormesh(xpos, ypos, Zm.T)
                         plt.xlabel('%s' %feat_names[bottom+filtstats[j][0]+i]), plt.ylabel('%s' %feat_names[ot_index])
                         plt.title('%s Precision' %uniquetarget_tr[0][l])
-                        cb=plt.colorbar()
+                        cb=plt.colorbar(norm=LogNorm())
                         cb.ax.tick_params(labelsize=8)
                         plt.tight_layout()
                         outname='plots/'+savedir+'/col_rad _%s_filt_%s_%s_%s_vs_%s.png' %(uniquetarget_tr[0][l],j,i,feat_names[bottom+filtstats[j][0]+i], feat_names[ot_index])
@@ -257,7 +257,7 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                     bottom=bottom + filtstats[j][1] +filtstats[j][0]
 
 
-def is_outlier(points, thresh=3.5):
+def is_outlier(points, thresh=6):
     """
     Returns a boolean array with True if points are outliers and False 
     otherwise.
