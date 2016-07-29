@@ -19,6 +19,11 @@ These are optional functions that the main code dips out to. Most can be enabled
 ####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
+Week of 25/7/16
+- Bugfixes
+- Plots! Added 2d histograms of class precision vs colour vs radius
+- Added 2d histograms of class precision vs feature value vs contribution to feat importance. These plots are awesome. I think they show the approximate decision boundaries per feature per class.
+
 19-20-21/7/16
 - Cleaning up plots and code
 - Added html results output by default (still in development)
