@@ -10,6 +10,8 @@ import numpy
 from matplotlib.colors import LogNorm
 import os
 import logging
+from mpl_toolkits.mplot3d import Axes3D
+import numpy.ma as ma
 
 plots_log=logging.getLogger('plots')
 
@@ -37,7 +39,7 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
-        names=['Star','QSO','Galaxy']
+        names=['Galaxy','QSO','Star']
         for k in range(0,probshape):
             for j in range(len(filtstats)):
                 fig=plt.figure()
@@ -48,7 +50,8 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
                     #print('i: %s' %i)
                     #print('bottom: %s' %bottom)
                     #print(names[k])
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    mask = XXpredict[:,-1] == k
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     cb=plt.colorbar(norm=LogNorm())
                     cb.ax.tick_params(labelsize=8)
                     plt.ylabel('Prob. of %s' %names[k],size=8)
@@ -64,7 +67,7 @@ def plot_bandvprob(XXpredict,probs,filtstats,probshape): # Plots each filter ban
                 
                 for i in range(filtstats[j][0]): # Plot for all filters
                     fig=plt.figure()
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     plt.colorbar(norm=LogNorm())
                     plt.ylabel('Prob. of %s' %names[k])
                     plt.xlabel('%s apparent mag' %settings.filters[j][i])
@@ -89,7 +92,7 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
-        names=['Star','QSO','Galaxy']
+        names=['Galaxy','QSO','Star']
         numplots=0
         for k in range(len(filtstats)):
             numplots = numplots+len(combs[k])
@@ -108,7 +111,8 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
 #                    plot_colourvprob_log.info('bottom+filtstats[j][0]: %s' %(bottom+filtstats[j][0]))
 #                    plot_colourvprob_log.info('Colour: %s - %s' %(settings.filters[j][combs[j][i][0]],settings.filters[j][combs[j][i][1]]))
 #                    plot_colourvprob_log.info(names[k])
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    mask = XXpredict[:,-1] == k
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     cb=plt.colorbar(norm=LogNorm())
                     cb.ax.tick_params(labelsize=8)
                     plt.ylabel('Prob. of %s' %names[k],size=8)
@@ -124,7 +128,7 @@ def plot_colourvprob(XXpredict,probs,filtstats,probshape,combs): # Plots each co
                 
                 for i in range(filtstats[j][1]): # Plot for all filters
                     fig=plt.figure()
-                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i],probs[:,-(k+1)],bins=100,norm=LogNorm())
+                    H, yedges, xedges, img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][mask],probs[:,k][mask],bins=100,norm=LogNorm())
                     plt.colorbar(norm=LogNorm())
                     plt.ylabel('Prob. of %s' %names[k])
                     plt.xlabel('%s - %s' %(settings.filters[j][combs[j][i][0]],settings.filters[j][combs[j][i][1]]))
@@ -208,3 +212,118 @@ def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
     plt.grid(alpha=0.4,which='both')
     plt.savefig('plots/Feature_imp_per_class_oth.png')
     plt.close()
+
+
+def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
+    if settings.plot_col_rad==1:
+        dirs=os.listdir(path)
+        savedir='plot_col_rad' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)
+        
+        for l in range(len(uniquetarget_tr[0])):
+            for k in range(len(settings.othertrain)):
+                ot_index=feat_names.index(settings.othertrain[k])
+                bottom=0
+                for j in range(len(filtstats)): # For all the filter sets
+                    for i in range(filtstats[j][1]): # Plot for all filters
+                        fig=plt.figure()
+                        #                        mask_true = yypredict == l
+                        #                        mask_pred = result == l
+                        #
+                        findalltrue = yypredict == l
+                        findpredtrue = (yypredict == l) & (result == yypredict)
+                        #
+                        outliermask1=is_outlier(XXpredict[:,bottom+filtstats[j][0]+i])
+                        outliermask2 = is_outlier(XXpredict[:,ot_index])
+                        totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
+                        totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
+                        # plot
+                        hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80,norm=LogNorm())
+                        hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80,norm=LogNorm(),range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                        hist = (hist_pred/hist_true)
+                        Zm = ma.masked_where(~numpy.isfinite(hist),hist)
+                        xpos, ypos = numpy.meshgrid(xedges,yedges)
+                        plt.pcolormesh(xpos, ypos, Zm.T)
+                        plt.xlabel('%s' %feat_names[bottom+filtstats[j][0]+i]), plt.ylabel('%s' %feat_names[ot_index])
+                        plt.title('%s Precision' %uniquetarget_tr[0][l])
+                        cb=plt.colorbar(norm=LogNorm())
+                        cb.ax.tick_params(labelsize=8)
+                        plt.tight_layout()
+                        outname='plots/'+savedir+'/col_rad _%s_filt_%s_%s_%s_vs_%s.png' %(uniquetarget_tr[0][l],j,i,feat_names[bottom+filtstats[j][0]+i], feat_names[ot_index])
+                        plt.savefig(outname)
+                        plt.close(fig)
+                    bottom=bottom + filtstats[j][1] +filtstats[j][0]
+
+def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,contributions):
+    if settings.plot_col_cont==1:
+        cont=numpy.transpose(contributions)
+        dirs=os.listdir(path)
+        savedir='plot_col_cont' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)
+        
+        for l in range(len(uniquetarget_tr[0])):
+            for i in range(len(feat_names)): # Plot for all filters
+                fig=plt.figure()
+                #                        mask_true = yypredict == l
+                #                        mask_pred = result == l
+                #
+                findalltrue = yypredict == l
+                findpredtrue = (yypredict == l) & (result == yypredict)
+                #
+                outliermask1=is_outlier(XXpredict[:,i])
+                outliermask2 = is_outlier(cont[l][i])
+                totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
+                totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
+                # plot
+                hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_true],cont[l][i][totalmask_true], bins=[80,200])
+                hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_pred],cont[l][i][totalmask_pred], bins=[80,200],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                hist = (hist_pred/hist_true)
+                Zm = ma.masked_where(~numpy.isfinite(hist),hist)
+                xpos, ypos = numpy.meshgrid(xedges,yedges)
+                plt.pcolormesh(xpos, ypos, Zm.T)
+                plt.xlabel('%s' %feat_names[i]), plt.ylabel('Contributions to P(%s) of %s' %(feat_names[i],uniquetarget_tr[0][l]))
+                plt.title('%s Precision Contprob' %uniquetarget_tr[0][l])
+                cb=plt.colorbar()
+                cb.ax.tick_params(labelsize=8)
+                plt.tight_layout()
+                outname='plots/'+savedir+'/col_cont _%s_%s_%s.png' %(uniquetarget_tr[0][l],i,feat_names[i])
+                plt.savefig(outname)
+                plt.close(fig)
+
+
+def is_outlier(points, thresh=6):
+    """
+    Returns a boolean array with True if points are outliers and False 
+    otherwise.
+
+    Parameters:
+    -----------
+        points : An numobservations by numdimensions array of observations
+        thresh : The modified z-score to use as a threshold. Observations with
+            a modified z-score (based on the median absolute deviation) greater
+            than this value will be classified as outliers.
+
+    Returns:
+    --------
+        mask : A numobservations-length boolean array.
+
+    References:
+    ----------
+        Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
+        Handle Outliers", The ASQC Basic References in Quality Control:
+        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. 
+    """
+    if len(points.shape) == 1:
+        points = points[:,None]
+    median = numpy.median(points, axis=0)
+    diff = numpy.sum((points - median)**2, axis=-1)
+    diff = numpy.sqrt(diff)
+    med_abs_deviation = numpy.median(diff)
+    
+    modified_z_score = 0.6745 * diff / med_abs_deviation
+    
+    return modified_z_score > thresh

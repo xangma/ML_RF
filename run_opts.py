@@ -12,7 +12,7 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
-def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats):
+def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
         checkmagspos_log=logging.getLogger('checkmagspos')
@@ -43,13 +43,14 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
             subclass_names_pr=subclass_names_pr[XXpred_neg_index]
             OBJID_tr = OBJID_tr[XX_neg_index]
             OBJID_pr = OBJID_pr[XXpred_neg_index]
+            SPECOBJID_pr =SPECOBJID_pr[XXpred_neg_index]
             RA_tr,DEC_tr = RA_tr[XX_neg_index],DEC_tr[XX_neg_index]
             RA_pr,DEC_pr = RA_pr[XXpred_neg_index],DEC_pr[XXpred_neg_index]
             specz_tr,specz_pr = specz_tr[XX_neg_index],specz_pr[XXpred_neg_index]
 
-        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
     else:
-        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
 
 def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
     if len(settings.weightinput) > 0:
