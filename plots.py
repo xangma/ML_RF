@@ -256,47 +256,44 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                         plt.close(fig)
                     bottom=bottom + filtstats[j][1] +filtstats[j][0]
 
-def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
-    if settings.plot_col_rad==1:
+def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,contributions):
+    if settings.plot_col_cont==1:
+        cont=numpy.transpose(contributions)
         dirs=os.listdir(path)
-        savedir='plot_col_rad' # Check if directory exists, if not, create
+        savedir='plot_col_cont' # Check if directory exists, if not, create
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
         
         for l in range(len(uniquetarget_tr[0])):
-            for k in range(len(settings.othertrain)):
-                ot_index=feat_names.index(settings.othertrain[k])
-                bottom=0
-                for j in range(len(filtstats)): # For all the filter sets
-                    for i in range(filtstats[j][1]): # Plot for all filters
-                        fig=plt.figure()
-                        #                        mask_true = yypredict == l
-                        #                        mask_pred = result == l
-                        #
-                        findalltrue = yypredict == l
-                        findpredtrue = (yypredict == l) & (result == yypredict)
-                        #
-                        outliermask1=is_outlier(XXpredict[:,bottom+filtstats[j][0]+i])
-                        outliermask2 = is_outlier(XXpredict[:,ot_index])
-                        totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
-                        totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
-                        # plot
-                        hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80,norm=LogNorm())
-                        hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80,norm=LogNorm(),range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
-                        hist = (hist_pred/hist_true)
-                        Zm = ma.masked_where(~numpy.isfinite(hist),hist)
-                        xpos, ypos = numpy.meshgrid(xedges,yedges)
-                        plt.pcolormesh(xpos, ypos, Zm.T)
-                        plt.xlabel('%s' %feat_names[bottom+filtstats[j][0]+i]), plt.ylabel('%s' %feat_names[ot_index])
-                        plt.title('%s Precision' %uniquetarget_tr[0][l])
-                        cb=plt.colorbar(norm=LogNorm())
-                        cb.ax.tick_params(labelsize=8)
-                        plt.tight_layout()
-                        outname='plots/'+savedir+'/col_rad _%s_filt_%s_%s_%s_vs_%s.png' %(uniquetarget_tr[0][l],j,i,feat_names[bottom+filtstats[j][0]+i], feat_names[ot_index])
-                        plt.savefig(outname)
-                        plt.close(fig)
-                    bottom=bottom + filtstats[j][1] +filtstats[j][0]
+            for i in range(len(feat_names)): # Plot for all filters
+                fig=plt.figure()
+                #                        mask_true = yypredict == l
+                #                        mask_pred = result == l
+                #
+                findalltrue = yypredict == l
+                findpredtrue = (yypredict == l) & (result == yypredict)
+                #
+                outliermask1=is_outlier(XXpredict[:,i])
+                outliermask2 = is_outlier(cont[0][i])
+                totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
+                totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
+                # plot
+                hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_true],cont[0][i][totalmask_true], bins=[80,200])
+                hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_pred],cont[0][i][totalmask_pred], bins=[80,200],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                hist = (hist_pred/hist_true)
+                Zm = ma.masked_where(~numpy.isfinite(hist),hist)
+                xpos, ypos = numpy.meshgrid(xedges,yedges)
+                plt.pcolormesh(xpos, ypos, Zm.T)
+                plt.xlabel('%s' %feat_names[i]), plt.ylabel('Contributions to P(%s) of %s' %(feat_names[i],uniquetarget_tr[0][l]))
+                plt.title('%s Precision Contprob' %uniquetarget_tr[0][l])
+                cb=plt.colorbar(norm=LogNorm())
+                cb.ax.tick_params(labelsize=8)
+                plt.tight_layout()
+                outname='plots/'+savedir+'/col_cont _%s_%s_%s.png' %(uniquetarget_tr[0][l],i,feat_names[i])
+                plt.savefig(outname)
+                plt.close(fig)
+
 
 def is_outlier(points, thresh=6):
     """

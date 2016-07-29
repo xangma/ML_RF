@@ -312,6 +312,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         start, end=[],[]
         # Split cats for RAM management
         numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))*10
+        numcats=100
         if numcats < 1:
             numcats = 1
         logger.info('Predict start')
@@ -325,14 +326,18 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             logger.info('Predicting cat %s/%s' %(i,len(XXpredict_cats)))
             result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
             probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
-            if settings.get_contributions == 1:           
-                logger.info('Getting contributions from predict catalogue %s' %i)
-                tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
-                contributions.extend(tiresult[2])
-                bias = tiresult[1][0]
+            if 'OvsA' not in ind_run_name:            
+                if settings.get_contributions == 1:           
+                    logger.info('Getting contributions from predict catalogue %s' %i)
+                    tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
+                    contributions.extend(tiresult[2])
+                    bias = tiresult[1][0]
         feat_importance = clf.feature_importances_
         result=numpy.float32(result)
         probs=numpy.float32(probs)
+        if 'OvsA' not in ind_run_name:            
+            if settings.get_contributions == 1: 
+                numpy.save('contributions',contributions)
 
         accuracy = metrics.accuracy_score(result,yypredict)
         recall = metrics.recall_score(result,yypredict,average=None)

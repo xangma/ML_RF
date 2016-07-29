@@ -26,7 +26,7 @@ output_all_trees = 0
 get_contributions = 1
 
 traindatanum=2500                                                           # Number of objects to train on
-predictdatanum=100000                                                       # Number of objects to predict
+predictdatanum=50000                                                       # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 
 diagnostics=1
