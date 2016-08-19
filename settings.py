@@ -22,8 +22,13 @@ prob_outfile = 'ML_RF_probs'
 log_outfile='ML_RF_logfile'						    # Name of output logfile
 stats_outfile='ML_RF_stats'
 
+# THESE TAKE CONSIDERABLY MORE TIME (and also save automatically)
 output_all_trees = 0
-get_contributions = 1
+get_contributions = 0
+get_perfect_contributions=0
+compute_contribution_mic=0
+compute_mic=0                                                               #WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
+compute_pearson=0
 
 traindatanum=2500                                                           # Number of objects to train on
 predictdatanum=50000                                                       # Number of objects to predict
@@ -32,7 +37,7 @@ weightinput=[]#[34,33,33]                                                   # We
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None,'class_weight':'balanced'}         # MLA settings
+MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
 actually_run=1   
 n_runs = 1                                                                 # Actually run the MLA
 
@@ -49,10 +54,14 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob=1								    # Plot hist of filter band vs prob for each class
-plotcolourvprob=1   
+plotbandvprob = 1								    # Plot hist of filter band vs prob for each class
+plotcolourvprob = 1
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 plot_col_rad = 1
-plot_col_cont=1
+plot_col_cont = 1
+plot_col_cont_true = 1
+plot_mic = 1
+plot_pearson=1
+plot_mic_cont=1
 
 get_images=1

@@ -8,6 +8,7 @@ Created on Thu Jun 16 18:00:54 2016
 import os
 import run_opts
 import settings
+import htmloutput
 import numpy
 import astropy.io.fits as fits
 import time
@@ -15,9 +16,8 @@ import plots
 import logging
 import treeinterpreter as ti
 from sklearn import metrics
-import markup
-from markup import oneliner as e
 from sklearn import tree
+import mifs
 
 
 temp_train='./temp_train.csv' # Define temp files for pyspark
@@ -311,14 +311,15 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                 os.remove('plots/tree_example.dot')
         start, end=[],[]
         # Split cats for RAM management
-        numcats = numpy.int64((2*XXpredict.size*clf.n_jobs/1024/1024)/(clf.n_jobs*8))*10
-        numcats=100
+        numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
+        if settings.get_contributions ==1:
+            numcats=100
         if numcats < 1:
             numcats = 1
         logger.info('Predict start')
         logger.info('------------')
         start = time.time()
-        result,probs,bias,contributions=[],[],[],[]
+        result,probs,bias,contributions,train_contributions=[],[],[],[],[]
         XXpredict_cats=numpy.array_split(XXpredict,numcats)
         logger.info('Splitting predict array into %s' %numcats)
         logger.info('------------')
@@ -327,7 +328,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
             result.extend(clf.predict(XXpredict_cats[i][:,0:n_feat])) # XX is predict array.
             probs.extend(clf.predict_proba(XXpredict_cats[i][:,0:n_feat])) # Only take from 0:n_feat because answers are tacked on end
             if 'OvsA' not in ind_run_name:            
-                if settings.get_contributions == 1:           
+                if (settings.get_contributions == 1) | (settings.get_perfect_contributions==1):           
                     logger.info('Getting contributions from predict catalogue %s' %i)
                     tiresult = ti.predict(clf,XXpredict_cats[i][:,0:n_feat])
                     contributions.extend(tiresult[2])
@@ -338,7 +339,14 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         if 'OvsA' not in ind_run_name:            
             if settings.get_contributions == 1: 
                 numpy.save('contributions',contributions)
-
+            if settings.get_perfect_contributions == 1: 
+                numpy.save('perfect_contributions',contributions)
+            if settings.compute_contribution_mic == 1:
+                logger.info('Getting contributions from train catalogue (for plot_mic_cont)')
+                tiresult_train = ti.predict(clf,XX[:,0:n_feat])
+                train_contributions=tiresult_train[2]
+                bias_train = tiresult_train[1][0]
+        
         accuracy = metrics.accuracy_score(result,yypredict)
         recall = metrics.recall_score(result,yypredict,average=None)
         precision = metrics.precision_score(result,yypredict,average=None)
@@ -367,7 +375,9 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
         numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
     
-    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf
+    return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions
+
+mic_runs,pearson_runs,mic_contributions_runs=[],[],[]
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
@@ -383,8 +393,17 @@ for n in range(0,settings.n_runs):
             unique_IDs_pr_loop=[unique_IDS_pr[i],numpy.float32(99)]
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
-            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
             one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+            if settings.compute_mic == 1:
+                mic_combs, mic_all = run_opts.compute_mic(XX[yy == i])
+                numpy.save('mic'+'_'+ind_run_name,[mic_combs,mic_all])
+                mic_runs.append('mic'+'_'+ind_run_name)
+            if settings.compute_pearson == 1:
+                pearson_combs, pearson_all = run_opts.compute_pearson(XX[yy == i])
+                numpy.save('mpearson'+'_'+ind_run_name,[pearson_combs,pearson_all])
+                pearson_runs.append('mpearson'+'_'+ind_run_name)
+                
         plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
     #        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
@@ -393,15 +412,45 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
-
-        # PLOTS
-        logger.info('Plotting ...')
-        plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
-        plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
-        plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
-        plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
-        plots.plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
+        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        #MIC COMPUTE
+        if settings.compute_mic == 1:
+             mic_combs, mic_all = run_opts.compute_mic(XX,XXpredict)
+             numpy.save('A_mic',[mic_combs,mic_all])
+             mic_runs.append('A_mic')
+        if settings.compute_pearson == 1:
+             pearson_combs, pearson_all = run_opts.compute_pearson(XX,XXpredict)
+             numpy.save('A_mpearson',[pearson_combs,pearson_all])
+             pearson_runs.append('A_mpearson')
+        if settings.compute_contribution_mic == 1:
+            train_contributions=numpy.transpose(train_contributions)
+            for i in range(len(unique_IDS_tr)):
+                logger.info('MIC of contributions')
+                mic_cont_combs, mic_cont_all = run_opts.compute_mic(numpy.transpose(train_contributions[i]))
+                numpy.save('mic_cont_%s'%i,[mic_cont_combs,mic_cont_all])
+                mic_contributions_runs.append('mic_cont_%s'%i)
+    if settings.get_perfect_contributions==1:
+        ind_run_name = 'perfect_cont_%s' %n
+        orig_train_path=settings.trainpath
+        orig_train_num=settings.traindatanum
+        settings.trainpath=settings.predpath
+        settings.traindatanum=settings.predictdatanum
+        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        settings.trainpath=orig_train_path
+        settings.traindatanum=orig_train_num
+        
+    # PLOTS
+    logger.info('Plotting ...')
+    plots.plot_subclasshist(XX,XXpredict,classnames_tr,classnames_pr) # Plot a histogram of the subclasses in the data
+    plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
+    plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
+    plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
+    plots_col_cont_outnames = plots.plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
+    plots_col_cont_true_outnames = plots.plot_col_cont_true(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
+    plots_col_rad_outnames = plots.plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
+    plots_mic_outnames = plots.plot_mic(feat_names)
+    plots_pearson_outnames = plots.plot_pearson(feat_names)
+    plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
@@ -416,8 +465,8 @@ for n in range(0,settings.n_runs):
         settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
         result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2,clf2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
 
+image_IDs = {}
 if settings.get_images == 1:
-    image_IDs = {}
     logging.getLogger("requests").setLevel(logging.WARNING)
     for i in range(len(unique_IDS_pr)):
         # create masks
@@ -500,163 +549,10 @@ if settings.get_images == 1:
             url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
         image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
 
-# Make index html
-os.chdir(settings.programpath)
-html_title='Results for run: %s' %ind_run_name
-page = markup.page()
-page.init(title=html_title)
-page.p(page.h3("Results for run: %s" %ind_run_name))
-page.a( "Home",href="index.html")
-page.a( "Example Tree",href="trees.html")
-page.a( "Plots",href="plots.html")
-page.a( "Images",href="images.html")
-page.p( "Accuracy: %s" %accuracy)
-page.p("")
-
-page.table(border=1)
-page.tr(),page.th(""),page.th(uniquetarget_tr[0][0]),page.th(uniquetarget_tr[0][1]),page.th(uniquetarget_tr[0][2]),page.tr.close()
-page.tr(),page.td(),page.b("Recall"),page.td.close(),page.td(round(recall[0],5)),page.td(round(recall[1],5)),page.td(round(recall[2],5)),page.tr.close()
-page.tr(),page.td(),page.b("Precision"),page.td.close(),page.td(round(precision[0],5)),page.td(round(precision[1],5)),page.td(round(precision[2],5)),page.tr.close()
-page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)),page.td(round(score[1],5)),page.td(round(score[2],5)),page.tr.close()
-page.table.close()
-
-# Write out settings
-html_settings=("Number of training objects: %s" %settings.traindatanum,"Number of prediction objects: %s" %settings.predictdatanum\
-,"","Random Forest Settings:",clf\
-,"","Features:","    Filters: %s" %settings.filters, "    Colours: %s" %col_names, "    Other: %s" %settings.othertrain)
-page.p(html_settings)
-
-# Save html
-html_file= open("index.html","w")
-html_file.write(page())
-html_file.close()
-
-# Create tree page
-page_tree = markup.page()
-page_tree.init(title=html_title+" Example Tree")
-page_tree.p(page_tree.h3("Results for run: %s Example Tree" %ind_run_name))
-page_tree.a( "Home",href="index.html")
-page_tree.a( "Example Tree",href="trees.html")
-page_tree.a( "Plots",href="plots.html")
-page_tree.a( "Images",href="images.html")
-page_tree.p("Example Tree")
-page_tree.img(src="plots/tree_example.png")
-
-html_file= open("trees.html","w")
-html_file.write(page_tree())
-html_file.close()
-
-# Create pages for plots
-page_plots = markup.page()
-page_plots.init(title=html_title+" Plots")
-page_plots.p(page_plots.h3("Results for run: %s Plots" %ind_run_name))
-page_plots.a( "Home",href="index.html")
-page_plots.a( "Example Tree",href="trees.html")
-page_plots.a( "Plots",href="plots.html")
-page_plots.a( "Images",href="images.html")
-page_plots.p("Overall Feature Importance")
-page_plots.img(src=plots_feat_outname)
-page_plots.p("")
-page_plots.p("Feature importance per class")
-page_plots.img(src=plots_feat_per_class_outname)
-allfiltplots= [s for s in plots_bandvprob_outnames if 'allfilt' in s]
-for i in range(len(allfiltplots)):
-    page_plots.p(["",allfiltplots[i]])
-    page_plots.img(src=allfiltplots[i])
-
-allfiltplots_cols= [s for s in plots_colourvprob_outnames if 'allfilt' in s]
-for i in range(len(allfiltplots_cols)):
-    page_plots.p(["",allfiltplots_cols[i]])
-    page_plots.img(src=allfiltplots_cols[i])
-
-html_file= open("plots.html","w")
-html_file.write(page_plots())
-html_file.close()
-# Create pages for images
-page_images = markup.page()
-page_images.init(title=html_title+" Images")
-page_images.p(page_images.h3("Results for run: %s Images" %ind_run_name))
-page_images.a( "Home",href="index.html")
-page_images.a( "Example Tree",href="trees.html")
-page_images.a( "Plots",href="plots.html")
-page_images.a( "Images",href="images.html")
-page_images.p("")
-
-for k in range(len(image_IDs)):
-    for j in range(len(image_IDs[k]['good_url'])):
-        page_images.p("")
-        page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_url'][j]), href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['good_spectra'][j]),width=200,height=143,href=image_IDs[k]['good_url_objid'][j]),page_images.td.close(),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['good_result'][j]])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['good_ID'][j])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['good_specz'][j])),page_images.tr.close()
-        page_images.table.close()
-        
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_probs'][j][0])),page_images.td(str(image_IDs[k]['good_probs'][j][1])),page_images.td(str(image_IDs[k]['good_probs'][j][2])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][2])),page_images.tr.close()
-        page_images.table.close()
-        page_images.p("Contributions to Probability")
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        for i in range(len(feat_names)):
-            page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['good_values'][j][i])),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,2][i],5))
-            page_images.tr.close()
-
-for k in range(len(image_IDs)):
-    for j in range(len(image_IDs[k]['ok_url'])):
-        page_images.p("")
-        page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_url'][j]), href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['ok_spectra'][j]),width=200,height=143, href=image_IDs[k]['ok_url_objid'][j]),page_images.td.close(),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['ok_result'][j]])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_ID'][j])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_specz'][j])),page_images.tr.close()
-        page_images.table.close()
-        
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_probs'][j][0])),page_images.td(str(image_IDs[k]['ok_probs'][j][1])),page_images.td(str(image_IDs[k]['ok_probs'][j][2])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][2])),page_images.tr.close()
-        page_images.table.close()
-        page_images.p("Contributions to Probability")       
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        for i in range(len(feat_names)):
-            page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['ok_values'][j][i])),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,2][i],5))
-            page_images.tr.close()
-
-for k in range(len(image_IDs)):
-    for j in range(len(image_IDs[k]['bad_url'])):
-        page_images.p("")
-        page_images.table(border=1)
-        page_images.tr(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_url'][j]), href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.td(),page_images.a( e.img( src=image_IDs[k]['bad_spectra'][j]),width=200,height=143, href=image_IDs[k]['bad_url_objid'][j]),page_images.td.close(),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['class']])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Predicted Class'),page_images.td.close(),page_images.td(str(uniquetarget_tr[0][image_IDs[k]['bad_result'][j]])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('ObjID'),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_ID'][j])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b('Redshift'),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_specz'][j])),page_images.tr.close()
-        page_images.table.close()
-        
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_probs'][j][0])),page_images.td(str(image_IDs[k]['bad_probs'][j][1])),page_images.td(str(image_IDs[k]['bad_probs'][j][2])),page_images.tr.close()
-        page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][2])),page_images.tr.close()
-        page_images.table.close()
-        page_images.p("Contributions to Probability")
-        page_images.table(border=1)
-        page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-        for i in range(len(feat_names)):
-            page_images.tr()
-            page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['bad_values'][j][i])),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,2][i],5))
-            page_images.tr.close()
-
-html_file= open("images.html","w")
-html_file.write(page_images())
-html_file.close()
+htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
+,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
+,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
+,plots_mic_contributions_outnames)
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515

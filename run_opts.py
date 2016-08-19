@@ -9,6 +9,8 @@ import numpy
 import itertools as it
 import logging
 run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
+from minepy import MINE
+from scipy.stats import pearsonr
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
@@ -206,3 +208,28 @@ def diagnostics(x, state): # This is quite a 'free' function that is meant to ou
                 diagnostics_log.info('%4s %21s %12s %15s %5s' %(unique_IDS_pr[i],uniquetarget_pr[0][i],numright_group, len(grouptrue),round(((numright_group/len(grouptrue))*100),3)))
     else:
         return
+
+def compute_mic(XX):
+    mic_all=[]
+    combs=[]
+    if (settings.compute_mic ==1)|(settings.compute_contribution_mic==1):
+        compute_mic_log=logging.getLogger('compute_mic')
+        compute_mic_log.info('Computing MIC ...')
+        m = MINE()
+        combs = list(it.combinations(range(len(XX[0])),2))
+        for i in range(len(combs)):
+            m.compute_score(XX[:,combs[i][0]],XX[:,combs[i][1]])
+            mic_all.append(m.mic())
+    return combs, mic_all
+
+def compute_pearson(XX):
+    pearson_all=[]
+    combs=[]
+    if settings.compute_pearson ==1:
+        compute_pearson_log=logging.getLogger('compute_pearson')
+        compute_pearson_log.info('Computing pearson coeffs ...')
+        combs = list(it.combinations(range(len(XX[0])),2))
+        for i in range(len(combs)):
+            x=pearsonr(XX[:,combs[i][0]],XX[:,combs[i][1]])[0]
+            pearson_all.append(x)
+    return combs, pearson_all

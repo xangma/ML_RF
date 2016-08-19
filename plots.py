@@ -10,7 +10,6 @@ import numpy
 from matplotlib.colors import LogNorm
 import os
 import logging
-from mpl_toolkits.mplot3d import Axes3D
 import numpy.ma as ma
 
 plots_log=logging.getLogger('plots')
@@ -215,6 +214,7 @@ def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
 
 
 def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
+    outnames_list=[]
     if settings.plot_col_rad==1:
         dirs=os.listdir(path)
         savedir='plot_col_rad' # Check if directory exists, if not, create
@@ -228,39 +228,167 @@ def plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr
                 bottom=0
                 for j in range(len(filtstats)): # For all the filter sets
                     for i in range(filtstats[j][1]): # Plot for all filters
-                        fig=plt.figure()
-                        #                        mask_true = yypredict == l
-                        #                        mask_pred = result == l
-                        #
-                        findalltrue = yypredict == l
-                        findpredtrue = (yypredict == l) & (result == yypredict)
+                        plt.figure()
+                        f, (axarr) = plt.subplots(2, 2)#,figsize=(14, 5))
+                        plt.ylabel('%s' %feat_names[ot_index])
+                        true_class = yypredict==l
+                        T_p = (yypredict == l) & (result == l)
+                        T_p_F_p = ((yypredict == l)& (result == l)) | ((result != l) & (yypredict==l))
+                        T_p_F_n = ((result == l) & (yypredict != l)) | ((yypredict==l)& (result == l))
                         #
                         outliermask1=is_outlier(XXpredict[:,bottom+filtstats[j][0]+i])
                         outliermask2 = is_outlier(XXpredict[:,ot_index])
-                        totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
-                        totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
+                        totalmask_tpfp = (T_p_F_p) & (~outliermask2) & (~outliermask1)
+                        totalmask_tpfn = (T_p_F_n) & (~outliermask2) & (~outliermask1)
+                        totalmask_tp = (T_p) & (~outliermask2) & (~outliermask1)
+                        totalmask_true = (true_class) & (~outliermask2) & (~outliermask1)
                         # plot
-                        hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=80,norm=LogNorm())
-                        hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_pred],XXpredict[:,ot_index][totalmask_pred], bins=80,norm=LogNorm(),range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
-                        hist = (hist_pred/hist_true)
-                        Zm = ma.masked_where(~numpy.isfinite(hist),hist)
+                        hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_true],XXpredict[:,ot_index][totalmask_true], bins=[80,120])
+                        hist_tp, xedges_tp, yedges_tp,img_tp = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_tp],XXpredict[:,ot_index][totalmask_tp], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                        hist_tpfp, xedges_tpfp, yedges_tpfp,img_tpfp = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_tpfp],XXpredict[:,ot_index][totalmask_tpfp], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                        hist_tpfn, xedges_tpfn, yedges_tpfn,img_tpfn = plt.hist2d(XXpredict[:,bottom+filtstats[j][0]+i][totalmask_tpfn],XXpredict[:,ot_index][totalmask_tpfn], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                        hist_prec = (hist_tp/hist_tpfp)
+                        hist_reca = (hist_tp/hist_tpfn)
+                        Zm_prec = ma.masked_where(~numpy.isfinite(hist_prec),hist_prec)
+                        Zm_reca = ma.masked_where(~numpy.isfinite(hist_reca),hist_reca)
+                        Zm_true = ma.masked_where(hist_true == 0 , hist_true)
+                        Zm_tp = ma.masked_where(hist_tp == 0 , hist_tp)
                         xpos, ypos = numpy.meshgrid(xedges,yedges)
-                        plt.pcolormesh(xpos, ypos, Zm.T)
-                        plt.xlabel('%s' %feat_names[bottom+filtstats[j][0]+i]), plt.ylabel('%s' %feat_names[ot_index])
-                        plt.title('%s Precision' %uniquetarget_tr[0][l])
-                        cb=plt.colorbar(norm=LogNorm())
+                        cmap = plt.cm.jet
+                        cmap.set_bad('w',1)
+                        
+                        im0 = axarr[0,0].pcolormesh(xpos, ypos, Zm_true.T,cmap=cmap)
+                        axarr[0,0].set_title('%s True' %uniquetarget_tr[0][l])
+                        axarr[0,0].set_ylim(min(yedges),max(yedges))
+                        axarr[0,0].set_xlim(min(xedges),max(xedges))
+                        axarr[0,0].set_xlabel('%s' %feat_names[bottom+filtstats[j][0]+i])
+                        cb=plt.colorbar(im0,ax=axarr[0,0])
                         cb.ax.tick_params(labelsize=8)
+                        im1 = axarr[0,1].pcolormesh(xpos, ypos, Zm_tp.T,cmap=cmap)
+                        axarr[0,1].set_title('%s T_p' %uniquetarget_tr[0][l])
+                        axarr[0,1].set_ylim(min(yedges),max(yedges))
+                        axarr[0,1].set_xlim(min(xedges),max(xedges))
+                        axarr[0,1].set_xlabel('%s' %feat_names[bottom+filtstats[j][0]+i])
+                        cb=plt.colorbar(im1,ax=axarr[0,1])
+                        cb.ax.tick_params(labelsize=8)
+                        im2 = axarr[1,0].pcolormesh(xpos, ypos, Zm_prec.T,cmap=cmap)
+                        axarr[1,0].set_title('%s Precision' %uniquetarget_tr[0][l])
+                        axarr[1,0].set_ylim(min(yedges),max(yedges))
+                        axarr[1,0].set_xlim(min(xedges),max(xedges))
+                        axarr[1,0].set_xlabel('%s' %feat_names[bottom+filtstats[j][0]+i])
+                        cb=plt.colorbar(im2,ax=axarr[1,0])
+                        cb.ax.tick_params(labelsize=8)
+                        im3 = axarr[1,1].pcolormesh(xpos, ypos, Zm_reca.T,cmap=cmap)
+                        axarr[1,1].set_title('%s Recall' %uniquetarget_tr[0][l])
+                        axarr[1,1].set_ylim(min(yedges),max(yedges))
+                        axarr[1,1].set_xlim(min(xedges),max(xedges))
+                        axarr[1,1].set_xlabel('%s' %feat_names[bottom+filtstats[j][0]+i])
+                        cb=plt.colorbar(im3,ax=axarr[1,1])
+                        cb.ax.tick_params(labelsize=8)                        
+                        
                         plt.tight_layout()
                         outname='plots/'+savedir+'/col_rad _%s_filt_%s_%s_%s_vs_%s.png' %(uniquetarget_tr[0][l],j,i,feat_names[bottom+filtstats[j][0]+i], feat_names[ot_index])
+                        outnames_list.append(outname)
                         plt.savefig(outname)
-                        plt.close(fig)
-                    bottom=bottom + filtstats[j][1] +filtstats[j][0]
+                        plt.close(f)
+                        plt.close()
 
-def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,contributions):
+                    bottom=bottom + filtstats[j][1] +filtstats[j][0]
+    return outnames_list
+
+def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
+    outnamelist=[]
     if settings.plot_col_cont==1:
+        contributions = numpy.load('contributions.npy')
         cont=numpy.transpose(contributions)
         dirs=os.listdir(path)
         savedir='plot_col_cont' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)
+        
+        for l in range(len(uniquetarget_tr[0])):
+            for i in range(len(feat_names)): # Plot for all filters
+#                fig=plt.figure()
+                plt.figure()
+                plt.ylabel('Contributions to P(%s) from %s' %(uniquetarget_tr[0][l],feat_names[i]))
+                f, (axarr) = plt.subplots(2, 2)#,figsize=(14, 5))
+                
+                true_class = yypredict==l
+                T_p = (yypredict == l) & (result == l)
+                T_p_F_p = ((yypredict == l)& (result == l)) | ((result != l) & (yypredict==l))
+                T_p_F_n = ((result == l) & (yypredict != l)) | ((yypredict==l)& (result == l))
+                #
+                outliermask1=is_outlier(XXpredict[:,i])
+                outliermask2 = is_outlier(cont[l][i])
+                totalmask_tpfp = (T_p_F_p) & (~outliermask2) & (~outliermask1)
+                totalmask_tpfn = (T_p_F_n) & (~outliermask2) & (~outliermask1)
+                totalmask_tp = (T_p) & (~outliermask2) & (~outliermask1)
+                totalmask_true = (true_class) & (~outliermask2) & (~outliermask1)
+                # plot
+                hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_true],cont[l][i][totalmask_true], bins=[80,120])
+                hist_tp, xedges_tp, yedges_tp,img_tp = plt.hist2d(XXpredict[:,i][totalmask_tp],cont[l][i][totalmask_tp], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                hist_tpfp, xedges_tpfp, yedges_tpfp,img_tpfp = plt.hist2d(XXpredict[:,i][totalmask_tpfp],cont[l][i][totalmask_tpfp], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                hist_tpfn, xedges_tpfn, yedges_tpfn,img_tpfn = plt.hist2d(XXpredict[:,i][totalmask_tpfn],cont[l][i][totalmask_tpfn], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+                hist_prec = (hist_tp/hist_tpfp)
+                hist_reca = (hist_tp/hist_tpfn)
+                Zm_prec = ma.masked_where(~numpy.isfinite(hist_prec),hist_prec)
+                Zm_reca = ma.masked_where(~numpy.isfinite(hist_reca),hist_reca)
+                Zm_true = ma.masked_where(hist_true == 0 , hist_true)
+                Zm_tp = ma.masked_where(hist_tp == 0 , hist_tp)
+                xpos, ypos = numpy.meshgrid(xedges,yedges)
+                cmap = plt.cm.jet
+                cmap.set_bad('w',1)
+                
+                im0 = axarr[0,0].pcolormesh(xpos, ypos, Zm_true.T,cmap=cmap)
+                axarr[0,0].axhline(0, color='black',linewidth=1)
+                axarr[0,0].set_title('%s True Contprob' %uniquetarget_tr[0][l])
+                axarr[0,0].set_ylim(min(yedges),max(yedges))
+                axarr[0,0].set_xlim(min(xedges),max(xedges))
+                axarr[0,0].set_xlabel('%s' %feat_names[i])
+                cb=plt.colorbar(im0,ax=axarr[0,0])
+                cb.ax.tick_params(labelsize=8)
+                im1 = axarr[0,1].pcolormesh(xpos, ypos, Zm_tp.T,cmap=cmap)
+                axarr[0,1].axhline(0, color='black',linewidth=1)
+                axarr[0,1].set_title('%s T_p Contprob' %uniquetarget_tr[0][l])
+                axarr[0,1].set_ylim(min(yedges),max(yedges))
+                axarr[0,1].set_xlim(min(xedges),max(xedges))
+                axarr[0,1].set_xlabel('%s' %feat_names[i])
+                cb=plt.colorbar(im1,ax=axarr[0,1])
+                cb.ax.tick_params(labelsize=8)
+                im2 = axarr[1,0].pcolormesh(xpos, ypos, Zm_prec.T,cmap=cmap)
+                axarr[1,0].axhline(0, color='black',linewidth=1)
+                axarr[1,0].set_title('%s Precision Contprob' %uniquetarget_tr[0][l])
+                axarr[1,0].set_ylim(min(yedges),max(yedges))
+                axarr[1,0].set_xlim(min(xedges),max(xedges))
+                axarr[1,0].set_xlabel('%s' %feat_names[i])
+                cb=plt.colorbar(im2,ax=axarr[1,0])
+                cb.ax.tick_params(labelsize=8)
+                im3 = axarr[1,1].pcolormesh(xpos, ypos, Zm_reca.T,cmap=cmap)
+                axarr[1,1].axhline(0, color='black',linewidth=1)
+                axarr[1,1].set_title('%s Recall Contprob' %uniquetarget_tr[0][l])
+                axarr[1,1].set_ylim(min(yedges),max(yedges))
+                axarr[1,1].set_xlim(min(xedges),max(xedges))
+                axarr[1,1].set_xlabel('%s' %feat_names[i])
+                cb=plt.colorbar(im3,ax=axarr[1,1])
+                cb.ax.tick_params(labelsize=8)
+                                
+                outname='plots/'+savedir+'/col_cont_%s_%s_%s.png' %(uniquetarget_tr[0][l],i,feat_names[i])
+                outnamelist.append(outname)
+                plt.tight_layout()
+                plt.savefig(outname)
+                plt.close(f)
+                plt.close()
+    return outnamelist
+
+
+def plot_col_cont_true(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr):
+    outnamelist=[]
+    if settings.plot_col_cont_true==1:
+        contributions=numpy.load('perfect_contributions.npy')
+        cont=numpy.transpose(contributions)
+        dirs=os.listdir(path)
+        savedir='plot_col_cont_true' # Check if directory exists, if not, create
         fullsavedir=path+savedir+'/'
         if savedir not in dirs:
             os.mkdir(fullsavedir)
@@ -272,29 +400,155 @@ def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_t
                 #                        mask_pred = result == l
                 #
                 findalltrue = yypredict == l
-                findpredtrue = (yypredict == l) & (result == yypredict)
+#                findpredtrue = (yypredict == l) & (result == yypredict)
                 #
                 outliermask1=is_outlier(XXpredict[:,i])
                 outliermask2 = is_outlier(cont[l][i])
-                totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
+#                totalmask_pred = (findpredtrue) & (~outliermask2) & (~outliermask1)
                 totalmask_true = (findalltrue) & (~outliermask2) & (~outliermask1)
                 # plot
-                hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_true],cont[l][i][totalmask_true], bins=[80,200])
-                hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_pred],cont[l][i][totalmask_pred], bins=[80,200],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
-                hist = (hist_pred/hist_true)
-                Zm = ma.masked_where(~numpy.isfinite(hist),hist)
+                hist_true, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_true],cont[l][i][totalmask_true], bins=[80,120])
+ #               hist_pred, xedges, yedges,img = plt.hist2d(XXpredict[:,i][totalmask_pred],cont[l][i][totalmask_pred], bins=[80,120],range=[[xedges.min(),xedges.max()],[yedges.min(),yedges.max()]])
+#                hist = (hist_pred/hist_true)
+                Zm = ma.masked_where(hist_true==0,hist_true)
                 xpos, ypos = numpy.meshgrid(xedges,yedges)
-                plt.pcolormesh(xpos, ypos, Zm.T)
+                cmap = plt.cm.jet
+                cmap.set_bad('w',1)
+                plt.pcolormesh(xpos, ypos, Zm.T,cmap=cmap)
                 plt.xlabel('%s' %feat_names[i]), plt.ylabel('Contributions to P(%s) of %s' %(feat_names[i],uniquetarget_tr[0][l]))
-                plt.title('%s Precision Contprob' %uniquetarget_tr[0][l])
+                plt.title('%s Contprob True' %uniquetarget_tr[0][l])
                 cb=plt.colorbar()
                 cb.ax.tick_params(labelsize=8)
+                plt.axhline(0, color='black',linewidth=1)
                 plt.tight_layout()
-                outname='plots/'+savedir+'/col_cont _%s_%s_%s.png' %(uniquetarget_tr[0][l],i,feat_names[i])
+                outname='plots/'+savedir+'/col_cont_true_%s_%s_%s.png' %(uniquetarget_tr[0][l],i,feat_names[i])
+                outnamelist.append(outname)
                 plt.savefig(outname)
                 plt.close(fig)
+    return outnamelist
 
+def plot_mic(feat_names):
+    outnamelist=[]
+    if settings.plot_mic == 1:
+        mic_runs1=[s for s in os.listdir() if 'mic_OvsA' in s]
+        mic_runs2=[s for s in os.listdir() if 'A_mic' in s]
+        mic_runs=mic_runs1+mic_runs2
+        for k in range(len(mic_runs)):
+            data=numpy.load(mic_runs[k])
+            #mic_combs=data[0]
+            mic_all=data[1]
+            triangle=[]
+            bottom,l=0,0
+            for i in range(len(feat_names),-1,-1):
+                triangle.append(mic_all[bottom:bottom+i])
+                bottom=bottom+i
+                l=l+1
+            
+            for i in range(len(triangle)):
+                diff = len(feat_names)+1 - len(triangle[i])
+                for j in range(diff):
+                    triangle[i]=list(numpy.hstack((numpy.NaN,triangle[i])))
+            xpos,ypos=numpy.meshgrid(numpy.array(range(len(feat_names)+1)),numpy.array(range(len(feat_names)+1)))
+            square=numpy.array(triangle)
+            Zm_sq=ma.masked_where(numpy.isnan(square),square)
+            fig,ax=plt.subplots()
+            cmap=plt.cm.jet
+            cmap.set_bad('w',1)
+            #cb=fig.colorbar()
+            #cb.ax.tick_params(labelsize=8)
+            ax.pcolormesh(xpos,ypos,Zm_sq,cmap=cmap)
+            ax.set_xticks(numpy.array(range(len(feat_names)+1))),ax.set_yticks(numpy.array(range(len(feat_names)+1)))
+            ax.set_xticklabels(feat_names,rotation='vertical',size=8,ha='left'),ax.set_yticklabels(feat_names,size=8,va='bottom')
+            ax.grid(alpha=0.7,linestyle='-')
+            fig.tight_layout()
+            plt.title('%s' %mic_runs[k])
+            outname='plots/'+mic_runs[k]+'.png'
+            plt.savefig(outname)
+            plt.close(fig)
+            outnamelist.append(outname)
+    return outnamelist
 
+def plot_mic_cont(feat_names):
+    outnamelist=[]
+    if settings.compute_contribution_mic==1:
+        mic_runs=[s for s in os.listdir() if 'mic_cont' in s]
+        for k in range(len(mic_runs)):
+            data=numpy.load(mic_runs[k])
+            #mic_combs=data[0]
+            mic_all=data[1]
+            triangle=[]
+            bottom,l=0,0
+            for i in range(len(feat_names)-1,-1,-1):
+                triangle.append(mic_all[bottom:bottom+i])
+                bottom=bottom+i
+                l=l+1
+            
+            for i in range(len(triangle)):
+                diff = len(feat_names) - len(triangle[i])
+                for j in range(diff):
+                    triangle[i]=list(numpy.hstack((numpy.NaN,triangle[i])))
+            xpos,ypos=numpy.meshgrid(numpy.array(range(len(feat_names)+1)),numpy.array(range(len(feat_names)+1)))
+            square=numpy.array(triangle)
+            Zm_sq=ma.masked_where(numpy.isnan(square),square)
+            fig,ax=plt.subplots()
+            cmap=plt.cm.jet
+            cmap.set_bad('w',1)
+            #cb=fig.colorbar()
+            #cb.ax.tick_params(labelsize=8)
+            ax.pcolormesh(xpos,ypos,Zm_sq,cmap=cmap)
+            ax.set_xticks(numpy.array(range(len(feat_names)+1))),ax.set_yticks(numpy.array(range(len(feat_names)+1)))
+            ax.set_xticklabels(feat_names,rotation='vertical',size=8,ha='left'),ax.set_yticklabels(feat_names,size=8,va='bottom')
+            ax.grid(alpha=0.7,linestyle='-')
+            fig.tight_layout()
+            plt.title('%s' %mic_runs[k])
+            outname='plots/'+mic_runs[k]+'.png'
+            plt.savefig(outname)
+            plt.close(fig)
+            outnamelist.append(outname)
+    return outnamelist
+
+def plot_pearson(feat_names):
+    outnamelist=[]
+    if settings.plot_pearson == 1:
+        pearson_runs1=[s for s in os.listdir() if 'mpearson_OvsA' in s]
+        pearson_runs2=[s for s in os.listdir() if 'A_mpearson' in s]
+        pearson_runs=pearson_runs1+pearson_runs2
+        for k in range(len(pearson_runs)):
+            data=numpy.load(pearson_runs[k])
+            #pearson_combs=data[0]
+            pearson_all=data[1]
+            triangle=[]
+            bottom,l=0,0
+            for i in range(len(feat_names),-1,-1):
+                triangle.append(pearson_all[bottom:bottom+i])
+                bottom=bottom+i
+                l=l+1
+            
+            for i in range(len(triangle)):
+                diff = len(feat_names)+1 - len(triangle[i])
+                for j in range(diff):
+                    triangle[i]=list(numpy.hstack((numpy.NaN,triangle[i])))
+            xpos,ypos=numpy.meshgrid(numpy.array(range(len(feat_names)+1)),numpy.array(range(len(feat_names)+1)))
+            square=numpy.array(triangle)
+            Zm_sq=ma.masked_where(numpy.isnan(square),square)
+            fig,ax=plt.subplots()
+            cmap=plt.cm.jet
+            cmap.set_bad('w',1)
+            #cb=fig.colorbar()
+            #cb.ax.tick_params(labelsize=8)
+            ax.pcolormesh(xpos,ypos,Zm_sq,cmap=cmap)
+            ax.set_xticks(numpy.array(range(len(feat_names)+1))),ax.set_yticks(numpy.array(range(len(feat_names)+1)))
+            ax.set_xticklabels(feat_names,rotation='vertical',size=8,ha='left'),ax.set_yticklabels(feat_names,size=8,va='bottom')
+            ax.grid(alpha=0.7,linestyle='-')
+            fig.tight_layout()
+            plt.title('%s' %pearson_runs[k])
+            outname='plots/'+pearson_runs[k]+'.png'
+            plt.savefig(outname)
+            plt.close(fig)
+            outnamelist.append(outname)
+    return outnamelist
+        
+        
 def is_outlier(points, thresh=6):
     """
     Returns a boolean array with True if points are outliers and False 
