@@ -176,7 +176,6 @@ subclass_names_tr = subclass_names_tr[0:traindatanum]
 subclass_pr = subclass_pr[0:predictdatanum]
 subclass_names_pr = subclass_names_pr[0:predictdatanum]
 
-
 del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
@@ -185,6 +184,11 @@ run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inp
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
+if settings.compute_mifs==1:
+    # define MI_FS feature selection method
+    feat_selector = mifs.MutualInformationFeatureSelector(n_features=n_feat,method='MRMR')
+    feat_selector.fit(XX[:,:-1], numpy.int64(yy))
+    
 if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}
     for i in range(len(unique_IDS_tr)):
@@ -378,11 +382,12 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
     return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions
 
 mic_runs,pearson_runs,mic_contributions_runs=[],[],[]
+one_vs_all_results = []
+results_dict=[]
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
     if settings.one_vs_all == 1:
-        one_vs_all_results = {}
         tree_was_on = 0
         if settings.output_all_trees == 1:
             tree_was_on = 1
@@ -394,7 +399,10 @@ for n in range(0,settings.n_runs):
             uniquetarget_tr_loop=[[uniquetarget_tr[0][i],'Other']]
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
-            one_vs_all_results[i] = {'class_ID' : unique_IDS_tr[i],'result' : result,'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop}
+            one_vs_all_results.append({'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr[i],'result' : result,\
+            'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop,'accuracy' : accuracy,\
+            'recall' : recall,'precision':precision,'score':score})
+
             if settings.compute_mic == 1:
                 mic_combs, mic_all = run_opts.compute_mic(XX[yy == i])
                 numpy.save('mic'+'_'+ind_run_name,[mic_combs,mic_all])
@@ -404,7 +412,6 @@ for n in range(0,settings.n_runs):
                 numpy.save('mpearson'+'_'+ind_run_name,[pearson_combs,pearson_all])
                 pearson_runs.append('mpearson'+'_'+ind_run_name)
                 
-        plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     #    if len(settings.othertrain) > 0:    
     #        plots.plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours)
         if tree_was_on == 1:
@@ -413,6 +420,9 @@ for n in range(0,settings.n_runs):
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
         result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr,'result' : result,'feat_importance' : feat_importance,\
+        'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
+        results_dict=results_dict+one_vs_all_results    
         #MIC COMPUTE
         if settings.compute_mic == 1:
              mic_combs, mic_all = run_opts.compute_mic(XX,XXpredict)
@@ -445,6 +455,7 @@ for n in range(0,settings.n_runs):
     plots_bandvprob_outnames = plots.plot_bandvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1]) # Plot band vs probability.
     plots_colourvprob_outnames = plots.plot_colourvprob(XXpredict,probs,filtstats,numpy.shape(probs)[1],combs) # Plot colour vs probability
     plots_feat_outname = plots.plot_feat(feat_importance,feat_names,n)
+    plots_feat_per_class_outname = plots.plot_feat_per_class(one_vs_all_results,feat_names,n)
     plots_col_cont_outnames = plots.plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
     plots_col_cont_true_outnames = plots.plot_col_cont_true(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
     plots_col_rad_outnames = plots.plot_col_rad(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr)
