@@ -81,45 +81,76 @@ col_names={}
 combs={}
 feat_names=[]
 
-for j in range(len(settings.filters)): # For each filter set
-    n_filt=len(settings.filters[j]) # Get the number of filters
+if settings.calculate_cross_colours==1:
+    totarr=[]
+    for j in range(len(settings.filters)):
+        for i in range(len(settings.filters[j])):
+            totarr.append(settings.filters[j][i])
+    settings.filters=totarr
+
+if settings.calculate_cross_colours==0:
+    for j in range(len(settings.filters)): # For each filter set
+        n_filt=len(settings.filters[j]) # Get the number of filters
+        filt_train=[] # Set up filter array
+        for i in range(len(settings.filters[j])): # For each filter i in filter set j 
+            filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
+        filt_names[j]= settings.filters[j]
+        filt_train=numpy.transpose(filt_train)
+        #    filt_names=numpy.transpose(filt_names)
+        filt_predict=[]
+        for i in range(len(settings.filters[j])): # Do same for prediction set
+            filt_predict.append(preddata[settings.filters[j][i]])
+        filt_predict=numpy.transpose(filt_predict)
+        
+        filt_train,filt_predict,combs[j],filt_names,col_names_j = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,j) # Section that calculates all possible colours
+        if settings.calculate_cross_colours==0:
+            filt_train,filt_predict,n_colour,col_names_j = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j) # Section that checks use_colours and cuts colours accordingly
+        col_names[j]=col_names_j
+        
+        filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
+        filt_predict_all[j]=filt_predict,n_filt,n_colour
+else:
+    n_filt=len(settings.filters) # Get the number of filters
     filt_train=[] # Set up filter array
-    for i in range(numpy.size(settings.filters[j])): # For each filter i in filter set j 
-        filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
-    filt_names[j]= settings.filters[j]
+    for i in range(len(settings.filters)): # For each filter i in filter set j 
+        filt_train.append(traindata[settings.filters[i]]) # Append filter to filter array
+    filt_names= settings.filters
     filt_train=numpy.transpose(filt_train)
-#    filt_names=numpy.transpose(filt_names)
+    #    filt_names=numpy.transpose(filt_names)
     filt_predict=[]
-    for i in range(numpy.size(settings.filters[j])): # Do same for prediction set
-        filt_predict.append(preddata[settings.filters[j][i]])
+    for i in range(len(settings.filters)): # Do same for prediction set
+        filt_predict.append(preddata[settings.filters[i]])
     filt_predict=numpy.transpose(filt_predict)
     
-    filt_train,filt_predict,combs[j],filt_names,col_names_j = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,j) # Section that calculates all possible colours
-    
-    filt_train,filt_predict,n_colour,col_names_j = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j) # Section that checks use_colours and cuts colours accordingly
-    col_names[j]=col_names_j
-    
-    filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
-    filt_predict_all[j]=filt_predict,n_filt,n_colour
+    filt_train,filt_predict,combs[0],filt_names,col_names = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,0) # Section that calculates all possible colours
+    col_names=col_names
+    n_colours=len(col_names)
+    filt_train_all[0]=filt_train,n_filt,n_colours # Create list of filter sets, with the num of filts and colours
+    filt_predict_all[0]=filt_predict,n_filt,n_colours
 
-n_filt=0
-n_colours=0
 filtstats={}
-for i in range(len(filt_train_all)):
-    filtstats[i]=filt_train_all[i][1],filt_train_all[i][2] # Make filtstats var with n_filt and n_colours to be passed to runopts.checkmagspos
-    n_filt=n_filt+filt_train_all[i][1]# Number of filters
-    n_colours=n_colours+filt_train_all[i][2] # Number of colours
+if settings.calculate_cross_colours == 0:
+    n_filt=0
+    n_colours=0
+    for i in range(len(filt_train_all)):
+        filtstats[i]=filt_train_all[i][1],filt_train_all[i][2] # Make filtstats var with n_filt and n_colours to be passed to runopts.checkmagspos
+        n_filt=n_filt+filt_train_all[i][1]# Number of filters
+        n_colours=n_colours+filt_train_all[i][2] # Number of colours
+
 n_oth=len(settings.othertrain) # Number of other features
 n_feat=n_filt+n_colours+n_oth # Number of total features
 logger.info('Number of filters: %s, Number of colours: %s, Number of other features: %s' %(n_filt,n_colours,n_oth))
 logger.info('Number of total features = %s + 1 target' %(n_feat))
 
-for j in range(len(settings.filters)):
-    feat_names = feat_names+filt_names[j]+col_names[j]
+if settings.calculate_cross_colours==0:
+    for j in range(len(settings.filters)):
+        feat_names = feat_names+filt_names[j]+col_names[j]
+else:
+    feat_names = feat_names+filt_names+col_names
 feat_names = feat_names+settings.othertrain
 # Stack arrays to feed to MLA
 XX=numpy.array(filt_train_all[0][0])
-if len(filt_train_all) >= 1:
+if len(filt_train_all[0]) >= 1:
     for i in range(1,len(filt_train_all)):
         XX=numpy.column_stack((XX,numpy.array(filt_train_all[i][0])))
 for i in range(len(settings.othertrain)): # Tack on other training features (not mags, like redshift)
@@ -176,18 +207,13 @@ subclass_names_tr = subclass_names_tr[0:traindatanum]
 subclass_pr = subclass_pr[0:predictdatanum]
 subclass_names_pr = subclass_names_pr[0:predictdatanum]
 
-del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
+del traindata,preddata,filt_train,filt_predict,filt_predict_all # Clean up
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
 
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
-
-if settings.compute_mifs==1:
-    # define MI_FS feature selection method
-    feat_selector = mifs.MutualInformationFeatureSelector(n_features=n_feat,method='MRMR')
-    feat_selector.fit(XX[:,:-1], numpy.int64(yy))
     
 if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}
@@ -400,7 +426,7 @@ for n in range(0,settings.n_runs):
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
             one_vs_all_results.append({'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr[i],'result' : result,\
-            'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop,'accuracy' : accuracy,\
+            'feat_importance' : feat_importance,'uniquetarget_tr' : uniquetarget_tr_loop,'accuracy' : accuracy,\
             'recall' : recall,'precision':precision,'score':score})
 
             if settings.compute_mic == 1:
@@ -419,10 +445,26 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
-        results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr,'result' : result,'feat_importance' : feat_importance,\
-        'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
-        results_dict=results_dict+one_vs_all_results    
+        if settings.compute_mifs==1:
+            mifs_results=[]
+            # define MI_FS feature selection method
+            for i in range(len(settings.mifs_types)):
+                mifs_run_name= ind_run_name+'_'+settings.mifs_types[i]
+                feat_selector = mifs.MutualInformationFeatureSelector(n_features=settings.mifs_n_feat,method=settings.mifs_types[i])
+                logger.info('Computing mifs type: %s' %settings.mifs_types[i])
+                feat_selector.fit(XX[:,:-1], numpy.int64(yy))
+                XX_mifs=numpy.transpose(XX.T[:-1,:][feat_selector.support_])
+                XXpredict_mifs=numpy.transpose(XXpredict.T[:-1,:][feat_selector.support_])
+                mifs_feat_names=(list(numpy.array(feat_names)[feat_selector.support_]))
+                result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_mifs,XXpredict_mifs,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,settings.mifs_n_feat,mifs_run_name,n)
+                mifs_results.append({'run_name' : mifs_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+                'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'mifs_feat_names' : mifs_feat_names,'feat_ranking':feat_selector.ranking_,'feat_ranking_sorted':numpy.sort(feat_selector.ranking_)})
+        else:
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+            results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+            'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
+        results_dict=results_dict+one_vs_all_results 
+        
         #MIC COMPUTE
         if settings.compute_mic == 1:
              mic_combs, mic_all = run_opts.compute_mic(XX,XXpredict)
@@ -563,7 +605,7 @@ if settings.get_images == 1:
 htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
 ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
 ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames)
+,plots_mic_contributions_outnames,results_dict)
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515

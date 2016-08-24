@@ -13,7 +13,7 @@ from markup import oneliner as e
 def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
 ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
 ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames):
+,plots_mic_contributions_outnames,results_dict):
         # Make index html
     os.chdir(settings.programpath)
     html_title='Results for run: %s' %ind_run_name
@@ -27,12 +27,26 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
     page.p( "Accuracy: %s" %accuracy)
     page.p("")
     
-    page.table(border=1)
-    page.tr(),page.th(""),page.th(uniquetarget_tr[0][0]),page.th(uniquetarget_tr[0][1]),page.th(uniquetarget_tr[0][2]),page.tr.close()
-    page.tr(),page.td(),page.b("Recall"),page.td.close(),page.td(round(recall[0],5)),page.td(round(recall[1],5)),page.td(round(recall[2],5)),page.tr.close()
-    page.tr(),page.td(),page.b("Precision"),page.td.close(),page.td(round(precision[0],5)),page.td(round(precision[1],5)),page.td(round(precision[2],5)),page.tr.close()
-    page.tr(),page.td(),page.b("F1 Score"),page.td.close(),page.td(round(score[0],5)),page.td(round(score[1],5)),page.td(round(score[2],5)),page.tr.close()
-    page.table.close()
+    #TABLES
+    for j in range(len(results_dict)):
+        page.table(border=1)
+        page.tr(),page.th(results_dict[j]['run_name'])
+        for i in range(len(results_dict[j]['uniquetarget_tr'])):
+            page.th(results_dict[j]['uniquetarget_tr'][0][i])
+        page.tr.close()
+        page.tr(),page.td(),page.b("Recall"),page.td.close()
+        for i in range(len(results_dict[j]['recall'])):
+            page.td(round(results_dict[j]['recall'][i],5))
+        page.tr.close()
+        page.tr(),page.td(),page.b("Precision"),page.td.close()
+        for i in range(len(results_dict[j]['precision'])):
+            page.td(round(results_dict[j]['precision'][i],5))
+        page.tr.close()
+        page.tr(),page.td(),page.b("F1 Score"),page.td.close()
+        for i in range(len(results_dict[j]['score'])):
+            page.td(round(results_dict[j]['score'][i],5))
+        page.tr.close()
+        page.table.close()
     
     # Write out settings
     html_settings=("Number of training objects: %s" %settings.traindatanum,"Number of prediction objects: %s" %settings.predictdatanum\

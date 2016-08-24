@@ -130,7 +130,10 @@ def calculate_colours(filt_train,filt_predict,n_filt,filt_names,j):
         for i in range(len(combs)):
             colours=filt_train[:,combs[i][0]]-filt_train[:,combs[i][1]]
             colours_all_train.append(colours)
-            col_names.append('%s - %s' %(settings.filters[j][combs[i][0]],settings.filters[j][combs[i][1]]))
+            if settings.calculate_cross_colours==0:
+                col_names.append('%s - %s' %(settings.filters[j][combs[i][0]],settings.filters[j][combs[i][1]]))
+            else:
+                col_names.append('%s - %s' %(settings.filters[combs[i][0]],settings.filters[combs[i][1]]))
         colours_all_predict=[]
         for i in range(len(combs)):
             colours=filt_predict[:,combs[i][0]]-filt_predict[:,combs[i][1]]
