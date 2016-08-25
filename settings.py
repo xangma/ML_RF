@@ -6,7 +6,7 @@ predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fi
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
-othertrain=[]#['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
+othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 double_sub_run = 0
@@ -38,11 +38,12 @@ mifs_n_feat=10
 traindatanum=2500                                                           # Number of objects to train on
 predictdatanum=50000                                                        # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
+cut_outliers=1
 
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
+MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':10}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 n_runs = 1     
                                                            
@@ -56,15 +57,15 @@ calculate_colours=1                                                         # Gi
     # u-g, u-r, u-i, u-z, g-r, g-i, g-z, r-i, r-z, i-z
     # for all filters
 use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
-calculate_cross_colours=1
+calculate_cross_colours=0
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob = 0								    # Plot hist of filter band vs prob for each class
-plotcolourvprob = 0
+plotbandvprob = 1								    # Plot hist of filter band vs prob for each class
+plotcolourvprob = 1
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
-plot_col_rad = 0
-plot_col_cont = 0
+plot_col_rad = 1
+plot_col_cont = 1
 plot_col_cont_true = 0
 plot_mic = 0
 plot_pearson=0
