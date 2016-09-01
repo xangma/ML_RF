@@ -474,6 +474,8 @@ for n in range(0,settings.n_runs):
                 result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_mifs,XXpredict_mifs,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,settings.mifs_n_feat,mifs_run_name,n)
                 mifs_results.append({'run_name' : mifs_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
                 'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'mifs_feat_names' : mifs_feat_names,'feat_ranking':feat_selector.ranking_,'feat_ranking_sorted':numpy.sort(feat_selector.ranking_)})
+#        else if settings.calc_MINT == 1:
+#            MINT_results=[]
         else:
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
             results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
