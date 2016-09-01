@@ -217,15 +217,15 @@ yypredict = XXpredict[:,-1] # Prediction answers
 
 if settings.cut_outliers==1:
     clf_train=covariance.EllipticEnvelope()
-    clf_predict=covariance.EllipticEnvelope()
+#    clf_predict=covariance.EllipticEnvelope()
     clf_train.fit(XX[:,44:49])
     train_inlier=clf_train.predict(XX[:,44:49])
     XX=XX[train_inlier==1]
-    clf_predict.fit(XXpredict[:,44:49])
-    predict_inlier=clf_predict.predict(XXpredict[:,44:49])
-    XXpredict=XXpredict[predict_inlier==1]
+#    clf_predict.fit(XXpredict[:,44:49])
+#    predict_inlier=clf_predict.predict(XXpredict[:,44:49])
+#    XXpredict=XXpredict[predict_inlier==1]
     yy=yy[train_inlier==1]
-    yypredict=yypredict[predict_inlier==1]
+#    yypredict=yypredict[predict_inlier==1]
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in

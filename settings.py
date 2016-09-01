@@ -27,11 +27,13 @@ output_all_trees = 0
 get_contributions = 0
 get_perfect_contributions=0
 compute_contribution_mic=0                                                  # Done post ML fit (to calc and save new contributions)
+calc_MINT = 1
+MINT_n_feat=10
 
 #Preprocessing features analysis functioms
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
-compute_mifs=0
+compute_mifs=1
 mifs_types=['JMI','JMIM','MRMR']
 mifs_n_feat=10 
 
@@ -44,7 +46,7 @@ diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':10}         # MLA settings
-actually_run=1                                                              # Actually run the MLA
+actually_run=0                                                              # Actually run the MLA
 n_runs = 1     
                                                            
 # RUN OPTS

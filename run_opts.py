@@ -9,8 +9,9 @@ import numpy
 import itertools as it
 import logging
 run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
-from minepy import MINE
+#from minepy import MINE
 from scipy.stats import pearsonr
+from sklearn.metrics import mutual_info_score
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
@@ -236,3 +237,71 @@ def compute_pearson(XX):
             x=pearsonr(XX[:,combs[i][0]],XX[:,combs[i][1]])[0]
             pearson_all.append(x)
     return combs, pearson_all
+
+def calc_MI(x, y, bins=None):
+    if bins is None:
+        bins = 25 # Need to fix for sqrt(5 something)
+    c_xy = numpy.histogram2d(x, y, bins)[0]
+    mi = mutual_info_score(None, None, contingency=c_xy)
+    return mi
+
+class MutualInformationCriteria:
+    """Determine MI using scikit-learn"""
+
+    def __init__(self, X, Y):
+        self.X, self.Y = X, Y
+
+    def mutual_information_2d(self, bins=None):
+        """normalised mutual information score alpha
+        http://scikit-learn.org/stable/modules/generated/sklearn.metrics.normalized_mutual_info_score.html
+        """
+        return calc_MI(self.X, self.Y, bins=bins) / numpy.sqrt(calc_MI(self.X, self.X, bins=bins) * calc_MI(self.Y, self.Y, bins=bins))
+
+def calc_MINT(XX,XXpredict): # ALSO CALCULATES MI AND SAVES THEM
+    MI_XX = {}
+    MI_XY = {}
+    combsXX,combsXY = [],[]  
+    S = settings.MINT_N_feat
+    if settings.calc.MINT == 1:
+        xfeats_ = numpy.array(MI_XY['columns2']) # This would be [0:49]
+        xfeats_ = [i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])] # I'm thinking ['columns'] and ['columns2'] would be [0:49] for me
+        
+        res = {}
+        for yfeat in MI_XY['columns']: # And this would be [0:2]. So for each class ...
+        
+            print('before', len(xfeats_))
+            xfeats = numpy.array([i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])]) # only find ones you want to compare
+            
+            print('after', len(xfeats_))
+            MIXY = numpy.array([MI_XY['correlation_results'][yfeat][j]['MI'] for j in xfeats], dtype=float) # Select MIXY for particular class 
+            indF = numpy.isfinite(MIXY) == True # Check if finite
+            MIXY = MIXY[indF] # Apply finite cut
+            xfeats = xfeats[indF] # Apply to xfeats array too
+            inds_ = numpy.argsort(MIXY)[::-1] # Return indicies that would sort array then flip reverse it
+            sort_MIXY = MIXY[inds_] # Sort the MIXY array to most important feature first
+            sort_xfeats = xfeats[inds_] # Sort the xfeats array
+            global_Phi = -100
+            
+            for feature1 in xfeats: # Starting with the top feature (one that is most strongly correlated with class in question) ...
+                feature_x = [feature1] # Index of feature/s in question
+                    
+                for S_ in numpy.arange(S - 1) + 2: # for selected features 2 to S (in the def case, that's 10) | Now S_ is 3, and feature_x has 2 features in it
+                    
+                    feats =  [f1 for f1 in xfeats if f1 not in feature_x] # select all features but one/s in question (feature_x) |
+                    Phi_best = -100
+                    for feat2 in feats: # For every element in the array without the feature/s in question |
+                        all_feats = feature_x + [feat2] # all_feats array contains the index of the feature/s in question and the index of the rest
+                        Phi = 1.0 / S_ * numpy.sum([MI_XY['correlation_results'][yfeat][j]['MI'] for j in all_feats]) - 1.0 / (S_ * S_) * (numpy.sum([MI_XX['correlation_results'][j][k]['MI'] for j in all_feats for k in all_feats]))
+             # Calculate Phi = 1 / num_feats_in_question * sum(MIXY[class][...])...
+                        if Phi > Phi_best:
+                            Phi_best = Phi
+                            best_new_feat = feat2 # If it finds a good feature ...|
+        
+                    feature_x.append(best_new_feat) # Add it to the list of features in question | Now go to next iteration of S_ on line 81 || Once S_ gets to 10 ...
+                if Phi_best > global_Phi: # | If this beats feature 0, this set of features is best, switch to this one.
+                    global_Phi = Phi_best
+                    global_feats = feature_x
+                    print('global_Phi phi', global_Phi)
+                    print(global_feats)
+        
+            res[yfeat] = {'best_phi': global_Phi, 'best_feats': global_feats}
