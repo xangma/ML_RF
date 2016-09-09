@@ -20,6 +20,7 @@ from sklearn import tree
 from sklearn import covariance
 import mifs
 
+image_IDs = {}
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
 
@@ -494,8 +495,8 @@ for n in range(0,settings.n_runs):
             
             MINT_feat_names=(list(numpy.array(feat_names)[MINT_feats['best_feats']]))
             feat_names=MINT_feat_names
-            n_feat=len(MINT_feats)
-            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,len(MINT_feats),MINT_run_name,n)
+            n_feat=len(feat_names)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,MINT_run_name,n)
             MINT_run_results.append({'run_name' : MINT_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
             'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'MINT_feat_names' : MINT_feat_names})
             
@@ -560,90 +561,98 @@ for n in range(0,settings.n_runs):
         run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
         settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
         result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2,clf2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
-
-image_IDs = {}
-if settings.get_images == 1:
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    for i in range(len(unique_IDS_pr)):
-        # create masks
-        yymask = yypredict == i
-        index_loop = numpy.where(yymask)
-        OBJID_pr_loop = OBJID_pr[yymask]
-        SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
-        result_loop = result[yymask]
-        yypredict_loop = yypredict[yymask]
-        probs_loop = probs[yymask]
-        RA_pr_loop = RA_pr[yymask]
-        DEC_pr_loop = DEC_pr[yymask]
-        specz_pr_loop = specz_pr[yymask]
         
-        good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
-        ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
-        bad_mask = probs_loop[:,i] < 0.1
-        
-        image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_SPECOBJID' : SPECOBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_SPECOBJID' : SPECOBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
+def get_images(XX,XXpredict):
+    if settings.get_images == 1:
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        for i in range(len(unique_IDS_pr)):
+            # create masks
+            yymask = yypredict == i
+            index_loop = numpy.where(yymask)
+            OBJID_pr_loop = OBJID_pr[yymask]
+            SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
+            result_loop = result[yymask]
+            yypredict_loop = yypredict[yymask]
+            probs_loop = probs[yymask]
+            RA_pr_loop = RA_pr[yymask]
+            DEC_pr_loop = DEC_pr[yymask]
+            specz_pr_loop = specz_pr[yymask]
+            
+            good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
+            ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
+            bad_mask = probs_loop[:,i] < 0.1
+            
+            image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_SPECOBJID' : SPECOBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
+            , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_SPECOBJID' : SPECOBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+            , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
+    
+        num_max_images = 10
+        for i in range(len(unique_IDS_pr)):
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['good_ID']) > num_max_images:
+                top_good = num_max_images
+            else:
+                top_good = len(image_IDs[i]['good_ID'])
+            for j in range(0,top_good):   
+                img_ID_good = image_IDs[i]['good_ID'][j]
+                img_SPECOBJID_good = image_IDs[i]['good_SPECOBJID'][j]
+                img_RA_good = image_IDs[i]['good_RA'][j]
+                img_DEC_good = image_IDs[i]['good_DEC'][j]
+                img_index_good = image_IDs[i]['good_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_good]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_good)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
+            image_IDs[i].update({'good_url':url_list,'good_spectra' : url_spectra_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['ok_ID']) > num_max_images:
+                top_ok = num_max_images
+            else:
+                top_ok = len(image_IDs[i]['ok_ID'])
+            for j in range(0,top_ok):  
+                img_ID_ok = image_IDs[i]['ok_ID'][j]
+                img_SPECOBJID_ok = image_IDs[i]['ok_SPECOBJID'][j]
+                img_RA_ok =  image_IDs[i]['ok_RA'][j]
+                img_DEC_ok = image_IDs[i]['ok_DEC'][j]
+                img_index_ok = image_IDs[i]['ok_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_ok]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_ok)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
+            image_IDs[i].update({'ok_url':url_list,'ok_spectra' : url_spectra_list ,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['bad_ID']) > num_max_images:
+                top_bad = num_max_images
+            else:
+                top_bad = len(image_IDs[i]['bad_ID'])
+            for j in range(0,top_bad):
+                img_ID_bad = image_IDs[i]['bad_ID'][j]
+                img_SPECOBJID_bad = image_IDs[i]['bad_SPECOBJID'][j]
+                img_RA_bad =  image_IDs[i]['bad_RA'][j]
+                img_DEC_bad = image_IDs[i]['bad_DEC'][j]
+                img_index_bad = image_IDs[i]['bad_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_bad]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_bad)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
+            image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
+    return image_IDs
 
-    num_max_images = 10
-    for i in range(len(unique_IDS_pr)):
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['good_ID']) > num_max_images:
-            top_good = num_max_images
-        else:
-            top_good = len(image_IDs[i]['good_ID'])
-        for j in range(0,top_good):   
-            img_ID_good = image_IDs[i]['good_ID'][j]
-            img_SPECOBJID_good = image_IDs[i]['good_SPECOBJID'][j]
-            img_RA_good = image_IDs[i]['good_RA'][j]
-            img_DEC_good = image_IDs[i]['good_DEC'][j]
-            img_index_good = image_IDs[i]['good_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_good]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_good)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list,'good_spectra' : url_spectra_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['ok_ID']) > num_max_images:
-            top_ok = num_max_images
-        else:
-            top_ok = len(image_IDs[i]['ok_ID'])
-        for j in range(0,top_ok):  
-            img_ID_ok = image_IDs[i]['ok_ID'][j]
-            img_SPECOBJID_ok = image_IDs[i]['ok_SPECOBJID'][j]
-            img_RA_ok =  image_IDs[i]['ok_RA'][j]
-            img_DEC_ok = image_IDs[i]['ok_DEC'][j]
-            img_index_ok = image_IDs[i]['ok_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_ok]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_ok)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list,'ok_spectra' : url_spectra_list ,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['bad_ID']) > num_max_images:
-            top_bad = num_max_images
-        else:
-            top_bad = len(image_IDs[i]['bad_ID'])
-        for j in range(0,top_bad):
-            img_ID_bad = image_IDs[i]['bad_ID'][j]
-            img_SPECOBJID_bad = image_IDs[i]['bad_SPECOBJID'][j]
-            img_RA_bad =  image_IDs[i]['bad_RA'][j]
-            img_DEC_bad = image_IDs[i]['bad_DEC'][j]
-            img_index_bad = image_IDs[i]['bad_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_bad]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_bad)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
+if settings.calc_MINT == 1:
+    get_images(XX_MINT,XXpredict_MINT)
+elif settings.compute_mifs == 1:
+    get_images(XX_mifs,XXpredict_mifs)
+else:
+    get_images(XX,XXpredict)
 
 htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
 ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
