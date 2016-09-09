@@ -10,7 +10,7 @@ othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
 double_sub_run = 0
-one_vs_all = 1                                                              # WARNING. Takes as many runs as there are classes in training set
+one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
@@ -27,13 +27,15 @@ output_all_trees = 0
 get_contributions = 0
 get_perfect_contributions=0
 compute_contribution_mic=0                                                  # Done post ML fit (to calc and save new contributions)
-calc_MINT = 1
-MINT_n_feat=10
 
 #Preprocessing features analysis functioms
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
-compute_mifs=1
+
+calc_MINT = 1 # Does not work in OvsA
+MINT_n_feat=10
+
+compute_mifs=0 # Does not work in OvsA
 mifs_types=['JMI','JMIM','MRMR']
 mifs_n_feat=10 
 
@@ -46,7 +48,7 @@ diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':10}         # MLA settings
-actually_run=0                                                              # Actually run the MLA
+actually_run=1                                                              # Actually run the MLA
 n_runs = 1     
                                                            
 # RUN OPTS
@@ -59,16 +61,16 @@ calculate_colours=1                                                         # Gi
     # u-g, u-r, u-i, u-z, g-r, g-i, g-z, r-i, r-z, i-z
     # for all filters
 use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
-calculate_cross_colours=0
+calculate_cross_colours=1
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
 plotbandvprob = 1								    # Plot hist of filter band vs prob for each class
 plotcolourvprob = 1
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
-plot_col_rad = 1
+plot_col_rad = 0                                                    # Doesn't work with MINT or mifs ...
 plot_col_cont = 1
-plot_col_cont_true = 0
+plot_col_cont_true = 1
 plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0

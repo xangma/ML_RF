@@ -98,7 +98,7 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
     page_plots_col_cont.p("")
     
     for i in range(len(plots_col_cont_outnames)):
-        page_plots_col_cont.div(style='width: 2000px; height: 600px;')
+        page_plots_col_cont.div(style='width: 2000px; height: 600px;',id='cc%s' %i)
         page_plots_col_cont.p(["",plots_col_cont_outnames[i]]),page_plots_col_cont.p(["",plots_col_cont_true_outnames[i]])
         page_plots_col_cont.img(src=plots_col_cont_outnames[i]),page_plots_col_cont.img(src=plots_col_cont_true_outnames[i])
         page_plots_col_cont.div.close()
@@ -125,19 +125,20 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
     page_plots.p("Overall Feature Importance")
     page_plots.img(src=plots_feat_outname)
     page_plots.p("")
-    page_plots.p("Feature importance per class")
-    page_plots.img(src=plots_feat_per_class_outname)
-    
-    page_plots.p("Maximal Information Coefficients")    
-    for i in range(len(plots_mic_outnames)):
-        page_plots.div(style='width: 2000px; height: 600px;')
-        page_plots.p(plots_mic_outnames[i]),page_plots.p(plots_pearson_outnames[i])
-        page_plots.img(src=plots_mic_outnames[i]),page_plots.img(src=plots_pearson_outnames[i])
-        page_plots.div.close()
-    
-    for i in range(len(plots_mic_contributions_outnames)):
-        page_plots.p("MIC of Contribution to P(%s) for each feature"%uniquetarget_tr[0][i])
-        page_plots.img(src=plots_mic_contributions_outnames[i])
+    if settings.one_vs_all == 1:
+        page_plots.p("Feature importance per class")
+        page_plots.img(src=plots_feat_per_class_outname)
+    if (settings.plot_mic ==1 and settings.plot_pearson == 1 and settings.plot_mic_cont == 1):
+        page_plots.p("Maximal Information Coefficients")    
+        for i in range(len(plots_mic_outnames)):
+            page_plots.div(style='width: 2000px; height: 600px;')
+            page_plots.p(plots_mic_outnames[i]),page_plots.p(plots_pearson_outnames[i])
+            page_plots.img(src=plots_mic_outnames[i]),page_plots.img(src=plots_pearson_outnames[i])
+            page_plots.div.close()
+        
+        for i in range(len(plots_mic_contributions_outnames)):
+            page_plots.p("MIC of Contribution to P(%s) for each feature"%uniquetarget_tr[0][i])
+            page_plots.img(src=plots_mic_contributions_outnames[i])
     
     allfiltplots= [s for s in plots_bandvprob_outnames if 'allfilt' in s]
     for i in range(len(allfiltplots)):

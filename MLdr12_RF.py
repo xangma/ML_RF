@@ -428,6 +428,15 @@ results_dict=[]
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
+    
+    if settings.calc_MINT == 1:    
+        MINT_feats = run_opts.calc_MINT(XX,XXpredict,yy)
+#        MINT_feats = []
+#        for i in range(len(MINT_results)):
+#            MINT_feats.extend(MINT_results[i]['best_feats'])
+#        MINT_unique_feats = numpy.unique(MINT_feats)
+#        logging.info('MINT: Selected %s unique features for %s classes' %(len(MINT_unique_feats),i+1))
+
     if settings.one_vs_all == 1:
         tree_was_on = 0
         if settings.output_all_trees == 1:
@@ -460,6 +469,7 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
+        
         if settings.compute_mifs==1:
             mifs_results=[]
             # define MI_FS feature selection method
@@ -474,8 +484,21 @@ for n in range(0,settings.n_runs):
                 result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_mifs,XXpredict_mifs,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,settings.mifs_n_feat,mifs_run_name,n)
                 mifs_results.append({'run_name' : mifs_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
                 'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'mifs_feat_names' : mifs_feat_names,'feat_ranking':feat_selector.ranking_,'feat_ranking_sorted':numpy.sort(feat_selector.ranking_)})
-#        else if settings.calc_MINT == 1:
-#            MINT_results=[]
+                
+        elif settings.calc_MINT == 1:
+            MINT_run_results=[]
+            MINT_run_name= ind_run_name+'_MINT'
+            
+            XX_MINT=numpy.transpose(numpy.transpose(XX[:,:-1])[MINT_feats['best_feats']])
+            XXpredict_MINT=numpy.transpose(numpy.transpose(XXpredict[:,:-1])[MINT_feats['best_feats']])
+            
+            MINT_feat_names=(list(numpy.array(feat_names)[MINT_feats['best_feats']]))
+            feat_names=MINT_feat_names
+            n_feat=len(MINT_feats)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,len(MINT_feats),MINT_run_name,n)
+            MINT_run_results.append({'run_name' : MINT_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+            'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'MINT_feat_names' : MINT_feat_names})
+            
         else:
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
             results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
@@ -504,7 +527,10 @@ for n in range(0,settings.n_runs):
         orig_train_num=settings.traindatanum
         settings.trainpath=settings.predpath
         settings.traindatanum=settings.predictdatanum
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        if settings.calc_MINT==1:
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,len(MINT_feats),MINT_run_name,n)
+        else:
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
         settings.trainpath=orig_train_path
         settings.traindatanum=orig_train_num
         

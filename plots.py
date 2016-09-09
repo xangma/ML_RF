@@ -168,28 +168,29 @@ def plot_feat(feat_importance,feat_names,n_run):
 
 def plot_feat_per_class(one_vs_all_results,feat_names,n):
     outname=[]
-    plt.figure()
-    for i in range(len(one_vs_all_results)):
-        plt.step(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])+2)),numpy.concatenate(([0],one_vs_all_results[i]['feat_importance'],[0])),label='class == %s' %one_vs_all_results[i]['uniquetarget_tr'][0][0])
-#        plt.scatter(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],s=2)
-#        plt.plot(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],label='class == %s' %one_vs_all_results[i]['class_ID'])
-    plt.axvspan(5.0, 15.0, color='red', alpha=0.3)
-    plt.axvspan(20.0, 30.0, color='red', alpha=0.3)
-    plt.axvspan(35.0, 45.0, color='red', alpha=0.3)
-    plt.legend()
-    plt.title('Feature importance per class')
-    plt.xlabel('Features')
-    plt.ylabel('Feat_Importance')
-    plt.xlim(0.0,len(feat_names))
-    plt.ylim(0,0.25)
-    plt.xticks(numpy.array(range(len(one_vs_all_results[0]['feat_importance'])))+0.5,feat_names, size=8,rotation='vertical')
-#    plt.xticks(numpy.array(range(len(feat_arr[0]))))
-#    plt.minorticks_on()
-    plt.grid(alpha=0.4,which='both')
-    plt.tight_layout()
-    outname = 'plots/Feature_imp_per_class_%s.png' %n
-    plt.savefig(outname)
-    plt.close()
+    if settings.one_vs_all == 1:
+        plt.figure()
+        for i in range(len(one_vs_all_results)):
+            plt.step(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])+2)),numpy.concatenate(([0],one_vs_all_results[i]['feat_importance'],[0])),label='class == %s' %one_vs_all_results[i]['uniquetarget_tr'][0][0])
+    #        plt.scatter(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],s=2)
+    #        plt.plot(numpy.array(range(len(one_vs_all_results[i]['feat_importance'])))+1,one_vs_all_results[i]['feat_importance'],label='class == %s' %one_vs_all_results[i]['class_ID'])
+        plt.axvspan(5.0, 15.0, color='red', alpha=0.3)
+        plt.axvspan(20.0, 30.0, color='red', alpha=0.3)
+        plt.axvspan(35.0, 45.0, color='red', alpha=0.3)
+        plt.legend()
+        plt.title('Feature importance per class')
+        plt.xlabel('Features')
+        plt.ylabel('Feat_Importance')
+        plt.xlim(0.0,len(feat_names))
+        plt.ylim(0,0.25)
+        plt.xticks(numpy.array(range(len(one_vs_all_results[0]['feat_importance'])))+0.5,feat_names, size=8,rotation='vertical')
+    #    plt.xticks(numpy.array(range(len(feat_arr[0]))))
+    #    plt.minorticks_on()
+        plt.grid(alpha=0.4,which='both')
+        plt.tight_layout()
+        outname = 'plots/Feature_imp_per_class_%s.png' %n
+        plt.savefig(outname)
+        plt.close()
     return outname
 
 def plot_feat_per_class_oth(one_vs_all_results,n_filt,n_colours):
@@ -321,7 +322,7 @@ def plot_col_cont(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_t
                 #
                 outliermask1=is_outlier(XXpredict[:,i])
                 outliermask2 = is_outlier(cont[l][i])
-                totalmask_tpfp = (T_p_F_p) & (~outliermask2) & (~outliermask1)
+                totalmask_tpfp = (T_p_F_p)& (~outliermask2) & (~outliermask1)
                 totalmask_tpfn = (T_p_F_n) & (~outliermask2) & (~outliermask1)
                 totalmask_tp = (T_p) & (~outliermask2) & (~outliermask1)
                 totalmask_true = (true_class) & (~outliermask2) & (~outliermask1)

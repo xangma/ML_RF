@@ -241,17 +241,15 @@ def compute_pearson(XX):
 
 def calc_MI(x, y, bins=None):
     if bins is None:
-        bins = 25 # Need to fix for sqrt(5 something)
+        bins = int(numpy.sqrt(len(x)/5))# 25 # bins= sqrt(n/5) so have 5 points for every cell of hist
     c_xy = numpy.histogram2d(x, y, bins)[0]
     mi = mutual_info_score(None, None, contingency=c_xy)
     return mi
 
 class MutualInformation:
     """Determine MI using scikit-learn"""
-
     def __init__(self, X, Y):
         self.X, self.Y = X, Y
-
     def mutual_information_2d(self, bins=None):
         """normalised mutual information score alpha
         http://scikit-learn.org/stable/modules/generated/sklearn.metrics.normalized_mutual_info_score.html
@@ -267,59 +265,59 @@ def setpath(d, p, k):
     else:
         setpath(d[p[0]], p[1:], k)
 
-def calc_MINT(XX,XXpredict): # ALSO CALCULATES MI AND SAVES THEM. MI_XX can use train+predict, MI_YY can only use train.
-MI_XX = {'correlation_results':{}}
-MI_XY = {'correlation_results':{}}
-MI_XX_mi,MI_XY_mi = [],[]
-trainpred=[]
-combsXX,combsXY = [],[]  
-S = settings.MINT_n_feat
-if settings.calc_MINT == 1:
-    trainpred = numpy.row_stack((XX,XXpredict))
-    combsXX =  combsXX= list(it.product(list(range(len(XX[0]))),list(range(len((XX[0]))))))
-    combsXY = list(it.product(list(range(len(XX[0]))),numpy.int64(list(numpy.unique(yy)))))
-    MI_XX['columns'] = list(range(len(XX[0])))
-    MI_XX['columns2'] = list(range(len(XX[0])))
-    MI_XY['columns'] = numpy.int64(list(numpy.unique(yy)))
-    MI_XY['columns2'] = list(range(len(XX[0])))
-    
-    # SET UP DICT
-    for i in range(len(combsXX)):
-        MI_XX['correlation_results'][combsXX[i][0]] = {}
-        for j in range(len(combsXX)):
-            MI_XX['correlation_results'][combsXX[i][0]][combsXX[j][1]] = {}
-    
-    for i in range(len(combsXX)):
-        XX_mi = MutualInformation(trainpred[combsXX[i][0]],trainpred[combsXX[i][1]]).mutual_information_2d()
-        MI_XX['correlation_results'][combsXX[i][0]][combsXX[i][1]]['MI'] = XX_mi
-    
-    # SET UP DICT
-    for i in range(len(combsXY)):
-        MI_XY['correlation_results'][combsXY[i][1]] = {}
-        for j in range(len(combsXY)):
-            MI_XY['correlation_results'][combsXY[i][1]][combsXY[j][0]] = {}
-    
-    for i in range(len(combsXY)):
-        XY_mi = MutualInformation(XXpredict[combsXY[i][1]],XXpredict[combsXY[i][0]]).mutual_information_2d()
-        MI_XY['correlation_results'][combsXY[i][1]][combsXY[i][0]]['MI'] = XY_mi
-    
-    #MINT START
-    xfeats_ = numpy.array(MI_XY['columns2']) # This would be [0:49]
-    xfeats_ = [i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])] # I'm thinking ['columns'] and ['columns2'] would be [0:49] for me
-
-    res = {}
-    for yfeat in MI_XY['columns']: # And this would be [0:2]. So for each class ...
+def calc_MINT(XX,XXpredict,yy): # ALSO CALCULATES MI AND SAVES THEM. MI_XX can use train+predict, MI_YY can only use train.
+    MI_XX = {'correlation_results':{}}
+    MI_XY = {'correlation_results':{}}
+    trainpred=[]
+    combsXX,combsXY = [],[]
+    res={}
+    S = settings.MINT_n_feat
+    if settings.calc_MINT == 1:
+        trainpred = numpy.row_stack((XX,XXpredict))
+        combsXX =  combsXX= list(it.product(list(range(len(XX[0][:-1]))),list(range(len((XX[0][:-1]))))))
+        combsXY = list(it.product(list(range(len(XX[0][:-1]))),numpy.int64(list(numpy.unique(yy)))))
+        MI_XX['columns'] = list(range(len(XX[0][:-1])))
+        MI_XX['columns2'] = list(range(len(XX[0][:-1])))
+        MI_XY['columns'] = numpy.int64(list(numpy.unique(yy)))
+        MI_XY['columns2'] = list(range(len(XX[0][:-1])))
         
+        # SET UP DICT
+        for i in range(len(combsXX)):
+            MI_XX['correlation_results'][combsXX[i][0]] = {}
+            for j in range(len(combsXX)):
+                MI_XX['correlation_results'][combsXX[i][0]][combsXX[j][1]] = {}
+        # CALC
+        for i in range(len(combsXX)):
+            XX_mi = MutualInformation(trainpred.T[combsXX[i][0]],trainpred.T[combsXX[i][1]]).mutual_information_2d()
+            MI_XX['correlation_results'][combsXX[i][0]][combsXX[i][1]]['MI'] = XX_mi
+        
+        # SET UP DICT
+        for i in range(len(combsXY)):
+            MI_XY['correlation_results'] = {}
+            for j in range(len(combsXY)):
+                MI_XY['correlation_results'][combsXY[j][0]] = {}
+        # CALC
+        for i in range(len(combsXY)):
+            XY_mi = MutualInformation(XX.T[combsXY[i][0]],yy).mutual_information_2d()
+            MI_XY['correlation_results'][combsXY[i][0]]['MI'] = XY_mi
+        
+        #MINT START
+        xfeats_ = numpy.array(MI_XY['columns2']) # This would be [0:49]
+        xfeats_ = [i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])] # I'm thinking ['columns'] and ['columns2'] would be [0:49] for me
+        
+        res = {}
+#        for yfeat in MI_XY['columns']: # And this would be [0:2]. So for each class ...
+            
         print('before', len(xfeats_))
         xfeats = numpy.array([i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])]) # only find ones you want to compare
         
         print('after', len(xfeats_))
-        MIXY = numpy.array([MI_XY['correlation_results'][yfeat][j]['MI'] for j in xfeats]) # Select MIXY for particular class 
+        MIXY = numpy.array([MI_XY['correlation_results'][j]['MI'] for j in xfeats]) # Select MIXY for particular class 
         indF = numpy.isfinite(MIXY) == True # Check if finite
         MIXY = MIXY[indF] # Apply finite cut
         xfeats = xfeats[indF] # Apply to xfeats array too
         inds_ = numpy.argsort(MIXY)[::-1] # Return indicies that would sort array then flip reverse it
-        sort_MIXY = MIXY[inds_] # Sort the MIXY array to most important feature first
+        sort_MIXY = MIXY[inds_] # Sort the MIXY array to most important feature first? Though it's never used ...
         sort_xfeats = xfeats[inds_] # Sort the xfeats array
         global_Phi = -100
         
@@ -332,7 +330,7 @@ if settings.calc_MINT == 1:
                 Phi_best = -100
                 for feat2 in feats: # For every element in the array without the feature/s in question |
                     all_feats = feature_x + [feat2] # all_feats array contains the index of the feature/s in question and the index of the rest
-                    Phi = 1.0 / S_ * numpy.sum([MI_XY['correlation_results'][yfeat][j]['MI'] for j in all_feats]) - 1.0 / (S_ * S_) * (numpy.sum([MI_XX['correlation_results'][j][k]['MI'] for j in all_feats for k in all_feats]))
+                    Phi = 1.0 / S_ * numpy.sum([MI_XY['correlation_results'][j]['MI'] for j in all_feats]) - 1.0 / (S_ * S_) * (numpy.sum([MI_XX['correlation_results'][j][k]['MI'] for j in all_feats for k in all_feats]))
          # Calculate Phi = 1 / num_feats_in_question * sum(MIXY[class][...])...
                     if Phi > Phi_best:
                         Phi_best = Phi
@@ -345,4 +343,5 @@ if settings.calc_MINT == 1:
                 print('global_Phi phi', global_Phi)
                 print(global_feats)
     
-        res[yfeat] = {'best_phi': global_Phi, 'best_feats': global_feats}
+        res = {'best_phi': global_Phi, 'best_feats': global_feats}
+    return res
