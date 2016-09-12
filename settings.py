@@ -74,5 +74,6 @@ plot_col_cont_true = 1
 plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
+plot_decision_boundaries =                                                  # Only works with MINT so far
 
 get_images=1
