@@ -11,6 +11,8 @@ from matplotlib.colors import LogNorm
 import os
 import logging
 import numpy.ma as ma
+import itertools as it
+from sklearn import tree
 
 plots_log=logging.getLogger('plots')
 
@@ -548,8 +550,39 @@ def plot_pearson(feat_names):
             plt.close(fig)
             outnamelist.append(outname)
     return outnamelist
+
+def decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names):
+    outnamelist=[]
+    if settings.plot_decision_boundaries == 1:
+        plot_colors = "ryb"
+        cmap = plt.cm.RdYlBu
+        plot_step = 0.02  # fine step width for decision surface contours
+        plot_step_coarser = 0.5  # step widths for coarse classifier guesses
         
+        MLA = get_function(settings.MLA)        
+        clf = MLA().set_params(**settings.MLAset)
         
+        combs_MINT_index = list(it.combinations(MINT_feats['best_feats'],2))
+        combs = list(it.combinations(range(len(MINT_feats['best_feats'])),2))
+        x_min, x_max = XX[:, 0].min() - 1, XX[:, 0].max() + 1
+        y_min, y_max = XX[:, 1].min() - 1, XX[:, 1].max() + 1
+        xx, yy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step),numpy.arange(y_min, y_max, plot_step))
+        
+        clf = clf.fit(numpy.transpose(numpy.vstack((XX[:,0],XX[:,1]))),yy)        
+        
+        estimator_alpha = 1.0 / len(clf.estimators_)
+        for tree in clf.estimators_:
+            Z = tree.predict(numpy.c_[xx.ravel(), yy.ravel()])
+            Z = Z.reshape(xx.shape)
+            cs = plt.contourf(xx, yy, Z, alpha=estimator_alpha, cmap=cmap)        
+
+def get_function(function_string):
+    import importlib
+    module, function = function_string.rsplit('.', 1)
+    module = importlib.import_module(module)
+    function = getattr(module, function)
+    return function
+
 def is_outlier(points, thresh=6):
     """
     Returns a boolean array with True if points are outliers and False 

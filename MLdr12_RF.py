@@ -429,7 +429,7 @@ results_dict=[]
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
-    
+    MINT_feats = {}
     if settings.calc_MINT == 1:    
         MINT_feats = run_opts.calc_MINT(XX,XXpredict,yy)
 #        MINT_feats = []
