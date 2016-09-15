@@ -161,11 +161,20 @@ for i in range(len(settings.othertrain)): # Tack on other training features (not
 classnames_tr=traindata[settings.predict[:-3]] # Get classnames
 subclass_tr=traindata['SPEC_SUBCLASS_ID']
 subclass_names_tr=traindata['SPEC_SUBCLASS']
-OBJID_tr = traindata['OBJID']
+OBJID_tr = traindata['OBJID_1']
 RA_tr,DEC_tr = traindata['RA'],traindata['DEC']
 specz_tr = traindata['SPECZ']
 
-XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
+if settings.make_binary == 0:
+    XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
+# Binary function here
+else:
+    stars_train = traindata[settings.predict] == 2
+    QSO_train = traindata[settings.predict] == 1
+    PS_indexes = stars_train+QSO_train
+    bin_yy=traindata[settings.predict]
+    bin_yy[PS_indexes] = 3
+    XX=numpy.column_stack((XX,bin_yy))
 
 # Do the same for predict data
 XXpredict=numpy.array(filt_predict_all[0][0])
@@ -182,7 +191,16 @@ SPECOBJID_pr = preddata['SPECOBJID']
 RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
 specz_pr = preddata['SPECZ']
 
-XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
+if settings.make_binary == 0:
+    XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
+# Binary function here
+else:
+    stars_pred = preddata[settings.predict] == 2
+    QSO_pred = preddata[settings.predict] == 1
+    PS_indexes_p = stars_pred+QSO_pred
+    bin_yy_p=preddata[settings.predict]
+    bin_yy_p[PS_indexes_p] = 3
+    XXpredict=numpy.column_stack((XXpredict,bin_yy_p))
 
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
@@ -218,15 +236,10 @@ yypredict = XXpredict[:,-1] # Prediction answers
 
 if settings.cut_outliers==1:
     clf_train=covariance.EllipticEnvelope()
-#    clf_predict=covariance.EllipticEnvelope()
     clf_train.fit(XX[:,44:49])
     train_inlier=clf_train.predict(XX[:,44:49])
     XX=XX[train_inlier==1]
-#    clf_predict.fit(XXpredict[:,44:49])
-#    predict_inlier=clf_predict.predict(XXpredict[:,44:49])
-#    XXpredict=XXpredict[predict_inlier==1]
     yy=yy[train_inlier==1]
-#    yypredict=yypredict[predict_inlier==1]
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in

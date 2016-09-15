@@ -12,3 +12,23 @@ spark-test-job.sh
 *.txt
 
 nodelist
+
+.DS_Store
+
+example.py
+
+*.pyc
+
+ML_RF_logfile
+
+*.fit
+
+markup.py
+
+mi.py
+
+mifs.py
+
+treeinterpreter.py
+
+settings.py

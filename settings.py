@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #[PROGRAM OPTIONS]
 programpath='/users/moricex/ML_RF/'                                         # Root path to program 
-trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train.fit'       # Input training data
+trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train_wtype.fit'       # Input training data
 predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'      # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
@@ -14,6 +14,8 @@ one_vs_all = 0                                                              # WA
 
 pyspark_on=0								    # Use pyspark instead of sklearn
 pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the settings are the same, don't rebuild)
+
+make_binary = 1
 
 saveresults=1                                                               # Save results or not? 
 feat_outfile = 'ML_RF_feat_'                                  # Filename for feature importance results
@@ -74,6 +76,6 @@ plot_col_cont_true = 1
 plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
-plot_decision_boundaries =                                                  # Only works with MINT so far
+plot_decision_boundaries = 1                                                 # Only works with MINT so far
 
 get_images=1

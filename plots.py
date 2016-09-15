@@ -560,37 +560,37 @@ def decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names):
         plot_step_coarser = 0.5  # step widths for coarse classifier guesses
         plot_colors = "ryb"    
         n_classes = 3
-n_estimators = 25
-
-MLA = get_function(settings.MLA)        
-clf = MLA().set_params(**settings.MLAset)
-
-combs_MINT_index = list(it.combinations(MINT_feats['best_feats'],2))
-combs = list(it.combinations(range(len(MINT_feats['best_feats'])),2))
-
-for i in range(len(combs_MINT_index)):
-    fig=plt.figure()
-    x_min, x_max = XX[:, combs_MINT_index[i][0]].min() - 1, XX[:, combs_MINT_index[i][0]].max() + 1
-    y_min, y_max = XX[:, combs_MINT_index[i][1]].min() - 1, XX[:, combs_MINT_index[i][1]].max() + 1
-    xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step),numpy.arange(y_min, y_max, plot_step))
-    
-    clf = clf.fit(numpy.transpose(numpy.vstack((XX[:,combs_MINT_index[i][0]],XX[:,combs_MINT_index[i][1]]))),yy)        
-    
-    estimator_alpha = 1.0 / len(clf.estimators_)
-    for tree in clf.estimators_:
-        Z = tree.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
-        Z = Z.reshape(xxx.shape)
-        cs = plt.contourf(xxx, yyy, Z, alpha=estimator_alpha, cmap=cmap)  
-    xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
-    Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
-    cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
-    for i, c in zip(range(n_classes), plot_colors):
-        idx = numpy.where(yy == i)
-        plt.scatter(XX[idx, combs_MINT_index[i][0]], XX[idx, combs_MINT_index[i][1]], c=c, label=uniquetarget_tr[0][i], cmap=cmap)
-    plt.legend()
-    outname='plots/'+str(i)+'.png'
-    plt.savefig(outname)
-    plt.close(fig)
+        n_estimators = 256
+        
+        MLA = get_function(settings.MLA)        
+        clf = MLA().set_params(**settings.MLAset)
+        
+        combs_MINT_index = list(it.combinations(MINT_feats['best_feats'],2))
+        combs = list(it.combinations(range(len(MINT_feats['best_feats'])),2))
+        
+        for i in range(len(combs_MINT_index)):
+            fig=plt.figure()
+            x_min, x_max = XX[:, combs_MINT_index[i][0]].min() - 1, XX[:, combs_MINT_index[i][0]].max() + 1
+            y_min, y_max = XX[:, combs_MINT_index[i][1]].min() - 1, XX[:, combs_MINT_index[i][1]].max() + 1
+            xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step),numpy.arange(y_min, y_max, plot_step))
+            
+            clf = clf.fit(numpy.transpose(numpy.vstack((XX[:,combs_MINT_index[i][0]],XX[:,combs_MINT_index[i][1]]))),yy)        
+            
+            estimator_alpha = 1.0 / len(clf.estimators_)
+            for tree in clf.estimators_:
+                Z = tree.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
+                Z = Z.reshape(xxx.shape)
+                cs = plt.contourf(xxx, yyy, Z, alpha=estimator_alpha, cmap=cmap)  
+            xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
+            Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
+            cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
+            for i, c in zip(range(n_classes), plot_colors):
+                idx = numpy.where(yy == i)
+                plt.scatter(XX[idx, combs_MINT_index[i][0]], XX[idx, combs_MINT_index[i][1]], c=c, label=uniquetarget_tr[0][i], cmap=cmap)
+            plt.legend()
+            outname='plots/'+'db'+str(i)+'.png'
+            plt.savefig(outname)
+            plt.close(fig)
 
 def get_function(function_string):
     import importlib
