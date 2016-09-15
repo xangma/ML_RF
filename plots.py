@@ -591,6 +591,8 @@ def decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_
                 idx = numpy.where(yy == j)
                 plt.scatter(XX[idx, combs_MINT_index[i][0]], XX[idx, combs_MINT_index[i][1]], c=c, label=uniquetarget_tr[0][j], cmap=cmap)
             plt.legend()
+            plt.xlabel(MINT_feat_names[combs[i][0]])
+            plt.ylabel(MINT_feat_names[combs[i][1]])
             outname='plots/'+'db'+str(i)+'.png'
             plt.savefig(outname)
             plt.close(fig)
