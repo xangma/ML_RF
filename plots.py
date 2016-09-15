@@ -591,6 +591,8 @@ def decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names):
             outname='plots/'+'db'+str(i)+'.png'
             plt.savefig(outname)
             plt.close(fig)
+            outnamelist.append(outname)
+    return outnamelist
 
 def get_function(function_string):
     import importlib

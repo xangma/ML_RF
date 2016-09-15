@@ -199,7 +199,13 @@ def diagnostics(x, state): # This is quite a 'free' function that is meant to ou
                 diagnostics_log.info('%4s %25s %10s %5s' %(unique_IDS_pr[i],uniquetarget_pr[0][i],uniquetarget_pr[2][i]\
                 ,round(((uniquetarget_pr[2][i]/prednum)*100),3)))
             diagnostics_log.info('------------') 
-
+            if settings.make_binary==1:
+                uniquetarget_tr[0][1]='PointS'
+                uniquetarget_tr=[uniquetarget_tr[0][0:2]]
+                unique_IDS_tr = unique_IDS_tr[0:2]
+                uniquetarget_pr[0][1]='PointS'
+                uniquetarget_pr=[uniquetarget_pr[0][0:2]]
+                unique_IDS_pr = unique_IDS_pr[0:2]
             return unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr
 
         if state == 'result': # At the end, provide the same type of class breakdown, but this time for results
