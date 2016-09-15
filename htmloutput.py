@@ -185,8 +185,14 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
             for num in range(len(uniquetarget_tr)):
                 page_images.th(uniquetarget_tr[0][num])
             page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_probs'][j][0])),page_images.td(str(image_IDs[k]['good_probs'][j][1])),page_images.td(str(image_IDs[k]['good_probs'][j][2])),page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][2])),page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),
+            for num in range(len(uniquetarget_tr)):            
+                page_images.td(str(image_IDs[k]['good_probs'][j][num]))
+            page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close()
+            for num in range(len(uniquetarget_tr)):
+                page_images.td(str(image_IDs[k]['good_tiresult'][j][1][0][num]))
+            page_images.tr.close()
             page_images.table.close()
             page_images.p("Contributions to Probability")
             page_images.table(border=1)
@@ -196,7 +202,9 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
             page_images.tr.close()
             for i in range(len(feat_names)):
                 page_images.tr()
-                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['good_values'][j][i])),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,2][i],5))
+                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['good_values'][j][i])),
+                for num in range(len(uniquetarget_tr)):                
+                    page_images.td(round(image_IDs[k]['good_tiresult'][j][2][0][:,num][i],5))
                 page_images.tr.close()
     
     for k in range(len(image_IDs)):
@@ -211,16 +219,30 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
             page_images.table.close()
             
             page_images.table(border=1)
-            page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_probs'][j][0])),page_images.td(str(image_IDs[k]['ok_probs'][j][1])),page_images.td(str(image_IDs[k]['ok_probs'][j][2])),page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][2])),page_images.tr.close()
+            page_images.tr(),page_images.th("")
+            for num in range(len(uniquetarget_tr)):
+                page_images.th(uniquetarget_tr[0][num])
+            page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),
+            for num in range(len(uniquetarget_tr)):
+                page_images.td(str(image_IDs[k]['ok_probs'][j][num]))
+            page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close()
+            for num in range(len(uniquetarget_tr)):            
+                page_images.td(str(image_IDs[k]['ok_tiresult'][j][1][0][num]))
+            page_images.tr.close()
             page_images.table.close()
             page_images.p("Contributions to Probability")       
             page_images.table(border=1)
-            page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+            page_images.tr(),page_images.th(""),page_images.td("Values")
+            for num in range(len(uniquetarget_tr)):
+                page_images.th(uniquetarget_tr[0][num])
+            page_images.tr.close()
             for i in range(len(feat_names)):
                 page_images.tr()
-                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['ok_values'][j][i])),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,2][i],5))
+                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['ok_values'][j][i]))
+                for num in range(len(uniquetarget_tr)):
+                    page_images.td(round(image_IDs[k]['ok_tiresult'][j][2][0][:,num][i],5))
                 page_images.tr.close()
     
     for k in range(len(image_IDs)):
@@ -235,16 +257,30 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
             page_images.table.close()
             
             page_images.table(border=1)
-            page_images.tr(),page_images.th(""),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_probs'][j][0])),page_images.td(str(image_IDs[k]['bad_probs'][j][1])),page_images.td(str(image_IDs[k]['bad_probs'][j][2])),page_images.tr.close()
-            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close(),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][0])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][1])),page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][2])),page_images.tr.close()
+            page_images.tr(),page_images.th("")
+            for num in range(len(uniquetarget_tr)):
+                page_images.th(uniquetarget_tr[0][num])
+            page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Probability"),page_images.td.close()
+            for num in range(len(uniquetarget_tr)):
+                page_images.td(str(image_IDs[k]['bad_probs'][j][num]))
+            page_images.tr.close()
+            page_images.tr(),page_images.td(),page_images.b("Bias"),page_images.td.close()
+            for num in range(len(uniquetarget_tr)):
+                page_images.td(str(image_IDs[k]['bad_tiresult'][j][1][0][num]))
+            page_images.tr.close()
             page_images.table.close()
             page_images.p("Contributions to Probability")
             page_images.table(border=1)
-            page_images.tr(),page_images.th(""),page_images.td("Values"),page_images.th(uniquetarget_tr[0][0]),page_images.th(uniquetarget_tr[0][1]),page_images.th(uniquetarget_tr[0][2]),page_images.tr.close()
+            page_images.tr(),page_images.th(""),page_images.td("Values")
+            for num in range(len(uniquetarget_tr)):
+                page_images.th(uniquetarget_tr[0][num])
+            page_images.tr.close()
             for i in range(len(feat_names)):
                 page_images.tr()
-                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['bad_values'][j][i])),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,0][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,1][i],5)),page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,2][i],5))
+                page_images.td(feat_names[i]),page_images.td(str(image_IDs[k]['bad_values'][j][i]))
+                for num in range(len(uniquetarget_tr)):                
+                    page_images.td(round(image_IDs[k]['bad_tiresult'][j][2][0][:,num][i],5))
                 page_images.tr.close()
     
     html_file= open("images.html","w")

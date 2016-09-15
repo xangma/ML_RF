@@ -199,7 +199,7 @@ else:
     QSO_pred = preddata[settings.predict] == 1
     PS_indexes_p = stars_pred+QSO_pred
     bin_yy_p=preddata[settings.predict]
-    bin_yy_p[PS_indexes_p] = 3
+    bin_yy_p[PS_indexes_p] = 1
     XXpredict=numpy.column_stack((XXpredict,bin_yy_p))
 
 # Filter out negative magnitudes
@@ -561,7 +561,7 @@ for n in range(0,settings.n_runs):
     plots_mic_outnames = plots.plot_mic(feat_names)
     plots_pearson_outnames = plots.plot_pearson(feat_names)
     plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
-    decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
+    decision_boundaries_outnames = plots.decision_boundaries(XX_MINT,XXpredict_MINT,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
