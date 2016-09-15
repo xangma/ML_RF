@@ -561,7 +561,7 @@ for n in range(0,settings.n_runs):
     plots_mic_outnames = plots.plot_mic(feat_names)
     plots_pearson_outnames = plots.plot_pearson(feat_names)
     plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
-    decision_boundaries_outnames = decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names)
+    decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
@@ -581,7 +581,7 @@ def get_images(XX,XXpredict):
         logging.getLogger("requests").setLevel(logging.WARNING)
         for i in range(len(numpy.unique(unique_IDS_pr))):
             # create masks
-            yymask = yypredict == i
+            yymask = yypredict == unique_IDS_pr[i]  
             index_loop = numpy.where(yymask)
             OBJID_pr_loop = OBJID_pr[yymask]
             SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
