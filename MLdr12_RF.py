@@ -600,7 +600,7 @@ def get_images(XX,XXpredict):
             , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
     
         num_max_images = 10
-        for i in range(len(unique_IDS_pr)):
+        for i in range(len(numpy.unique(unique_IDS_pr))):
             url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
             if len(image_IDs[i]['good_ID']) > num_max_images:
                 top_good = num_max_images
