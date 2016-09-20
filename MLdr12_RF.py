@@ -202,6 +202,15 @@ else:
     bin_yy_p[PS_indexes_p] = 1
     XXpredict=numpy.column_stack((XXpredict,bin_yy_p))
 
+if settings.objc_type_cuts==1:
+    logging.info('Cutting as per objc_type calc')
+    objc_res_train=numpy.load('mytype_res_train.npy')
+    objc_res_predict=numpy.load('mytype_res_predict.npy')
+    logging.info('Before len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
+    XX=XX[objc_res_train[1].astype(bool)]
+    XXpredict=XXpredict[objc_res_predict[1].astype(bool)]
+    logging.info('After len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
+    
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
 XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
@@ -443,6 +452,7 @@ results_dict=[]
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
     MINT_feats = {}
+    MINT_feat_names=[]
     if settings.calc_MINT == 1:    
         MINT_feats = run_opts.calc_MINT(XX,XXpredict,yy)
 #        MINT_feats = []
@@ -514,6 +524,16 @@ for n in range(0,settings.n_runs):
             'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'MINT_feat_names' : MINT_feat_names})
             
         else:
+            findex=[]
+            for numfilt in range(len(settings.onlyuse)):
+                findex.append(feat_names.index(settings.onlyuse[numfilt]))
+            XX=[XX.T[n] for n in findex]
+            XXpredict=[XXpredict.T[n] for n in findex]
+            XX=numpy.transpose(XX)
+            XX=numpy.column_stack((XX,yy))
+            XXpredict=numpy.transpose(XXpredict)
+            feat_names=[feat_names[n] for n in findex]
+            n_feat= len(findex)
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
             results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
             'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
@@ -561,7 +581,8 @@ for n in range(0,settings.n_runs):
     plots_mic_outnames = plots.plot_mic(feat_names)
     plots_pearson_outnames = plots.plot_pearson(feat_names)
     plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
-    decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
+    decision_boundaries_MINT_outnames = plots.decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
+    decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))

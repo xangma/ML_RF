@@ -5,9 +5,12 @@ trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train_wty
 predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'      # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
-,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']]        # Filter list as it is in fits file
+,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']\
+,['CMODELMAG_U','CMODELMAG_G','CMODELMAG_R','CMODELMAG_I','CMODELMAG_Z']]        # Filter list as it is in fits file
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
+
+onlyuse=['PSFMAG_U - CMODELMAG_U','PSFMAG_G - CMODELMAG_G','PSFMAG_R - CMODELMAG_R','PSFMAG_I - CMODELMAG_I','PSFMAG_Z - CMODELMAG_Z']
 
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
@@ -34,7 +37,7 @@ compute_contribution_mic=0                                                  # Do
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
 
-calc_MINT = 1 # Does not work in OvsA
+calc_MINT = 0 # Does not work in OvsA
 MINT_n_feat=10
 
 compute_mifs=0 # Does not work in OvsA
@@ -71,11 +74,14 @@ plotbandvprob = 1								    # Plot hist of filter band vs prob for each class
 plotcolourvprob = 1
 plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 plot_col_rad = 0                                                    # Doesn't work with MINT or mifs ...
-plot_col_cont = 1
-plot_col_cont_true = 1
+plot_col_cont = 0
+plot_col_cont_true = 0
 plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
-plot_decision_boundaries = 1                                                 # Only works with MINT so far
+plot_decision_boundaries_MINT = 0                                                 # Only works with MINT so far
+plot_decision_boundaries = 1
 
 get_images=1
+
+objc_type_cuts=0
