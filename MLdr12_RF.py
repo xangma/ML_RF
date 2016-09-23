@@ -164,6 +164,12 @@ subclass_names_tr=traindata['SPEC_SUBCLASS']
 OBJID_tr = traindata['OBJID_1']
 RA_tr,DEC_tr = traindata['RA'],traindata['DEC']
 specz_tr = traindata['SPECZ']
+objc_type_tr = traindata['type']
+objc_type_tr_u = traindata['type_u']
+objc_type_tr_g = traindata['type_g']
+objc_type_tr_r = traindata['type_r']
+objc_type_tr_i = traindata['type_i']
+objc_type_tr_z = traindata['type_z']
 
 if settings.make_binary == 0:
     XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
@@ -186,10 +192,16 @@ for i in range(len(settings.othertrain)): # Tack on other prediction features (n
 classnames_pr=preddata[settings.predict[:-3]]
 subclass_pr = preddata['SPEC_SUBCLASS_ID']
 subclass_names_pr = preddata['SPEC_SUBCLASS']
-OBJID_pr = preddata['OBJID']
-SPECOBJID_pr = preddata['SPECOBJID']
+OBJID_pr = preddata['OBJID_1']
+SPECOBJID_pr = preddata['SPECOBJID_1']
 RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
 specz_pr = preddata['SPECZ']
+objc_type_pr = preddata['type']
+objc_type_pr_u = preddata['type_u']
+objc_type_pr_g = preddata['type_g']
+objc_type_pr_r = preddata['type_r']
+objc_type_pr_i = preddata['type_i']
+objc_type_pr_z = preddata['type_z']
 
 if settings.make_binary == 0:
     XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
@@ -214,7 +226,9 @@ if settings.objc_type_cuts==1:
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
 XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
- = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z\
+ = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z)
 
 XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
@@ -228,7 +242,10 @@ SPECOBJID_pr = SPECOBJID_pr[0:predictdatanum]
 RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
 RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
 specz_tr,specz_pr = specz_tr[0:traindatanum],specz_pr[0:predictdatanum]
-
+objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z=\
+objc_type_tr[0:traindatanum],objc_type_tr_u[0:traindatanum],objc_type_tr_g[0:traindatanum],objc_type_tr_r[0:traindatanum],objc_type_tr_i[0:traindatanum],objc_type_tr_z[0:traindatanum]
+objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z=\
+objc_type_pr[0:predictdatanum],objc_type_pr_u[0:predictdatanum],objc_type_pr_g[0:predictdatanum],objc_type_pr_r[0:predictdatanum],objc_type_pr_i[0:predictdatanum],objc_type_pr_z[0:predictdatanum]
 # Cuts for doublesubrun
 subclass_tr = subclass_tr[0:traindatanum]
 subclass_names_tr = subclass_names_tr[0:traindatanum]
@@ -252,6 +269,77 @@ if settings.cut_outliers==1:
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
+
+#OBJC COMPARISONS
+gals_spec=yy==0
+ps_spec=yy>0
+#TRAINING
+gals_objc_tr_u=objc_type_tr_u==3
+ps_objc_tr_u = objc_type_tr_u==6
+gals_objc_tr_g=objc_type_tr_g==3
+ps_objc_tr_g = objc_type_tr_g==6
+gals_objc_tr_r=objc_type_tr_r==3 
+ps_objc_tr_r = objc_type_tr_r==6
+gals_objc_tr_i=objc_type_tr_i==3
+ps_objc_tr_i = objc_type_tr_i==6
+gals_objc_tr_z=objc_type_tr_z==3
+ps_objc_tr_z = objc_type_tr_z==6
+gals_corr_tr_u=(sum(gals_objc_tr_u[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_tr_u=(sum(ps_objc_tr_u[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_tr_u=(sum(gals_objc_tr_u[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_u[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_tr_g=(sum(gals_objc_tr_g[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_tr_g=(sum(ps_objc_tr_g[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_tr_g=(sum(gals_objc_tr_g[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_g[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_tr_r=(sum(gals_objc_tr_r[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_tr_r=(sum(ps_objc_tr_r[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_tr_r=(sum(gals_objc_tr_r[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_r[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_tr_i=(sum(gals_objc_tr_i[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_tr_i=(sum(ps_objc_tr_i[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_tr_i=(sum(gals_objc_tr_i[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_i[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_tr_z=(sum(gals_objc_tr_z[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_tr_z=(sum(ps_objc_tr_z[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_tr_z=(sum(gals_objc_tr_z[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_z[ps_spec]==ps_spec[ps_spec]))/traindatanum
+
+logger.info('OBJC_TYPE CUT RESULTS(training):')
+logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u))
+logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g))
+logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r))
+logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i))
+logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z))
+
+gals_objc_pr_u=objc_type_pr_u==3
+ps_objc_pr_u = objc_type_pr_u==6
+gals_objc_pr_g=objc_type_pr_g==3
+ps_objc_pr_g = objc_type_pr_g==6
+gals_objc_pr_r=objc_type_pr_r==3 
+ps_objc_pr_r = objc_type_pr_r==6
+gals_objc_pr_i=objc_type_pr_i==3
+ps_objc_pr_i = objc_type_pr_i==6
+gals_objc_pr_z=objc_type_pr_z==3
+ps_objc_pr_z = objc_type_pr_z==6
+gals_corr_pr_u=(sum(gals_objc_pr_u[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_pr_u=(sum(ps_objc_pr_u[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_pr_u=(sum(gals_objc_pr_u[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_u[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_pr_g=(sum(gals_objc_pr_g[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_pr_g=(sum(ps_objc_pr_g[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_pr_g=(sum(gals_objc_pr_g[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_g[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_pr_r=(sum(gals_objc_pr_r[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_pr_r=(sum(ps_objc_pr_r[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_pr_r=(sum(gals_objc_pr_r[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_r[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_pr_i=(sum(gals_objc_pr_i[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_pr_i=(sum(ps_objc_pr_i[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_pr_i=(sum(gals_objc_pr_i[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_i[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_pr_z=(sum(gals_objc_pr_z[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
+ps_corr_pr_z=(sum(ps_objc_pr_z[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
+tot_corr_pr_z=(sum(gals_objc_pr_z[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_z[ps_spec]==ps_spec[ps_spec]))/traindatanum
+
+logger.info('OBJC_TYPE CUT RESULTS(predict):')
+logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u))
+logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_g,ps_corr_pr_g,tot_corr_pr_g))
+logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_r,ps_corr_pr_r,tot_corr_pr_r))
+logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i))
+logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z))
+
 
 if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}

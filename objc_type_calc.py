@@ -24,6 +24,12 @@ psfmagerrnames=['PSFMAGERR_U','PSFMAGERR_G','PSFMAGERR_R','PSFMAGERR_I','PSFMAGE
 cmodelmagnames=['CMODELMAG_U','CMODELMAG_G','CMODELMAG_R','CMODELMAG_I','CMODELMAG_Z']
 cmodelmagerrnames=['CMODELMAGERR_U','CMODELMAGERR_G','CMODELMAGERR_R','CMODELMAGERR_I','CMODELMAGERR_Z']
 extnames=['EXTINCTION_U','EXTINCTION_G','EXTINCTION_R','EXTINCTION_I','EXTINCTION_Z']
+traintempl=traindata['SPEC_CLASS_ID']
+
+#MAKE BINARY
+#stars_train = traindata['SPEC_CLASS_ID'] == 2
+#QSO_train = traindata['SPEC_CLASS_ID'] == 1
+#PS_indexes = stars_train+QSO_train
 
 def calc_objc_type(x,name):
     type_arr,psfmags,cmodelmags,mytype,ext=[],[],[],[],[]
@@ -72,7 +78,22 @@ def calc_objc_type(x,name):
     print(sum(mytype_all==type_arr[-1]))
     matches=mytype_all==type_arr[-1]
     mytype_res=numpy.vstack((mytype_all,matches))
-    numpy.save('mytype_res_'+name,mytype_res)
+#    numpy.save('mytype_res_'+name,mytype_res)
     
 calc_objc_type(traindata,'train')
 calc_objc_type(preddata,'predict')
+
+gals_match=[]
+ps_match=[]
+gals_objc_u=traindata['TYPE_U']==3
+ps_objc_u =  traindata['TYPE_U']==6
+gals_objc_u=traindata['TYPE_G']==3
+ps_objc_u =  traindata['TYPE_G']==6
+gals_objc_u=traindata['TYPE_R']==3
+ps_objc_u =  traindata['TYPE_R']==6
+gals_objc_u=traindata['TYPE_I']==3
+ps_objc_u =  traindata['TYPE_I']==6
+gals_objc_u=traindata['TYPE_Z']==3
+ps_objc_u =  traindata['TYPE_Z']==6
+gals_spec= traindata['SPEC_CLASS_ID']==0
+ps_spec = traindata['SPEC_CLASS_ID']>0

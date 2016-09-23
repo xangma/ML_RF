@@ -2,7 +2,7 @@
 #[PROGRAM OPTIONS]
 programpath='/users/moricex/ML_RF/'                                         # Root path to program 
 trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train_wtype.fit'       # Input training data
-predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict.fit'      # Input prediction data
+predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict_wtype.fit'      # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']\
@@ -47,7 +47,7 @@ mifs_n_feat=10
 traindatanum=2500                                                           # Number of objects to train on
 predictdatanum=50000                                                        # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
-cut_outliers=1
+cut_outliers=0
 
 diagnostics=1
 # MLA settings

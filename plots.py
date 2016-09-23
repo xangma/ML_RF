@@ -677,7 +677,7 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
     fullsavedir=path+savedir+'/'
     if savedir not in dirs:
         os.mkdir(fullsavedir)
-    if settings.plot_decision_boundaries == 1:
+    if settings.plot_decision_boundaries_DT == 1:
         plot_step = 0.1  # fine step width for decision surface contours
         plot_step_coarser = 0.5  # step widths for coarse classifier guesses
         if settings.make_binary == 0:
@@ -707,11 +707,11 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
             accuracy = metrics.accuracy_score(result,yypredict)
 #            estimator_alpha = 1.0 / len(clf.estimators_)
 #            for tree in clf.estimators_:
-            Z = clf.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
+            Z = clf.predict(numpy.c_[xxx.ravel()])
             Z = Z.reshape(xxx.shape)
             cs = plt.contourf(xxx, yyy, Z, cmap=cmap)  
             xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
-            Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
+            Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel()]).reshape(xx_coarser.shape)
             cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
             for j, c in zip(range(n_classes), plot_colors):
                 idx = numpy.where(yy == j)
