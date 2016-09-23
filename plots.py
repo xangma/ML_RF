@@ -555,6 +555,11 @@ def plot_pearson(feat_names):
 
 def decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr):
     outnamelist=[]
+    dirs=os.listdir(path)
+    savedir='db_MINT' # Check if directory exists, if not, create
+    fullsavedir=path+savedir+'/'
+    if savedir not in dirs:
+        os.mkdir(fullsavedir)
     if settings.plot_decision_boundaries_MINT == 1:
         plot_step = 0.1  # fine step width for decision surface contours
         plot_step_coarser = 0.5  # step widths for coarse classifier guesses
@@ -595,7 +600,7 @@ def decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniqueta
             plt.legend()
             plt.xlabel(MINT_feat_names[combs[i][0]])
             plt.ylabel(MINT_feat_names[combs[i][1]])
-            outname='plots/'+'db'+str(i)+'.png'
+            outname=fullsavedir+'db'+str(i)+'.png'
             plt.savefig(outname)
             plt.close(fig)
             outnamelist.append(outname)
@@ -603,6 +608,11 @@ def decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniqueta
 
 def decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr):
     outnamelist=[]
+    dirs=os.listdir(path)
+    savedir='db' # Check if directory exists, if not, create
+    fullsavedir=path+savedir+'/'
+    if savedir not in dirs:
+        os.mkdir(fullsavedir)
     if settings.plot_decision_boundaries == 1:
         plot_step = 0.1  # fine step width for decision surface contours
         plot_step_coarser = 0.5  # step widths for coarse classifier guesses
@@ -628,7 +638,7 @@ def decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr):
             xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step),numpy.arange(y_min, y_max, plot_step))
             
             clf = clf.fit(numpy.transpose(numpy.vstack((XX[:,combs[i][0]],XX[:,combs[i][1]]))),yy)        
-            result= clf.predict(numpy.transpose(numpy.vstack((XXpredict[:,combs[i][0]],XXpredict[:,combs[i][1]]))),yypredict)
+            result= clf.predict(numpy.transpose(numpy.vstack((XXpredict[:,combs[i][0]],XXpredict[:,combs[i][1]]))))
             accuracy = metrics.accuracy_score(result,yypredict)
             estimator_alpha = 1.0 / len(clf.estimators_)
             for tree in clf.estimators_:
@@ -642,10 +652,84 @@ def decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr):
                 idx = numpy.where(yy == j)
                 plt.scatter(XX[idx, combs[i][0]], XX[idx, combs[i][1]], c=c, label=uniquetarget_tr[0][j], cmap=cmap)
             plt.legend()
+            axes = plt.gca()
+            yaxes = axes.get_ylim()
+            absy=yaxes[1]-yaxes[0]
+            deltay=0.145-yaxes[0]
+            xaxes = axes.get_xlim()
+            absx=xaxes[1]-xaxes[0]
+            deltax=0.145-xaxes[0]
+#            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
+            plt.axvline(x=.145,ymax=deltay/absy, linewidth=2,color='black')
             plt.xlabel(feat_names[combs[i][0]])
             plt.ylabel(feat_names[combs[i][1]])
             plt.title('Accuracy: %s' %accuracy)
-            outname='plots/'+'db'+str(i)+'.png'
+            outname=fullsavedir+'db'+str(i)+'.png'
+            plt.savefig(outname)
+            plt.close(fig)
+            outnamelist.append(outname)
+    return outnamelist
+
+def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr):
+    outnamelist=[]
+    dirs=os.listdir(path)
+    savedir='db' # Check if directory exists, if not, create
+    fullsavedir=path+savedir+'/'
+    if savedir not in dirs:
+        os.mkdir(fullsavedir)
+    if settings.plot_decision_boundaries == 1:
+        plot_step = 0.1  # fine step width for decision surface contours
+        plot_step_coarser = 0.5  # step widths for coarse classifier guesses
+        if settings.make_binary == 0:
+            plot_colors = "ryb"
+            cmap = plt.cm.RdYlBu
+        else:
+            plot_colors="rb"
+            cmap = plt.cm.RdBu
+        n_classes = len(uniquetarget_tr[0])
+        n_estimators = 256
+        MLA = 'sklearn.tree.DecisionTreeClassifier'                             # Which MLA to load
+        MLAset = {'max_depth':10} 
+        MLA = get_function(MLA)        
+        clf = MLA().set_params(**MLAset)
+        
+    #        combs_MINT_index = list(it.combinations(MINT_feats['best_feats'],2))
+        combs = list(it.combinations(range(len(feat_names)),2))
+        
+        for i in range(len(combs)):
+            fig=plt.figure()
+            x_min, x_max = XX[:, combs[i][0]].min() - 1, XX[:, combs[i][0]].max() + 1
+            y_min, y_max = XX[:, combs[i][1]].min() - 1, XX[:, combs[i][1]].max() + 1
+            xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step),numpy.arange(y_min, y_max, plot_step))
+            
+            clf = clf.fit(XX[:,combs[i][0],None],yy)        
+            result= clf.predict(XXpredict[:,combs[i][0],None])
+            accuracy = metrics.accuracy_score(result,yypredict)
+#            estimator_alpha = 1.0 / len(clf.estimators_)
+#            for tree in clf.estimators_:
+            Z = clf.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
+            Z = Z.reshape(xxx.shape)
+            cs = plt.contourf(xxx, yyy, Z, cmap=cmap)  
+            xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
+            Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
+            cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
+            for j, c in zip(range(n_classes), plot_colors):
+                idx = numpy.where(yy == j)
+                plt.scatter(XX[idx, combs[i][0]], XX[idx, combs[i][1]], c=c, label=uniquetarget_tr[0][j], cmap=cmap)
+            plt.legend()
+            axes = plt.gca()
+            yaxes = axes.get_ylim()
+            absy=yaxes[1]-yaxes[0]
+            deltay=0.145-yaxes[0]
+            xaxes = axes.get_xlim()
+            absx=xaxes[1]-xaxes[0]
+            deltax=0.145-xaxes[0]
+#            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
+            plt.axvline(x=.145,ymax=deltay/absy, linewidth=2,color='black')
+            plt.xlabel(feat_names[combs[i][0]])
+            plt.ylabel(feat_names[combs[i][1]])
+            plt.title('Decision Tree Accuracy: %s' %accuracy)
+            outname=fullsavedir+'db'+str(i)+'.png'
             plt.savefig(outname)
             plt.close(fig)
             outnamelist.append(outname)

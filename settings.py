@@ -80,7 +80,8 @@ plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
 plot_decision_boundaries_MINT = 0                                                 # Only works with MINT so far
-plot_decision_boundaries = 1
+plot_decision_boundaries = 0
+plot_decision_boundaries_DT = 1
 
 get_images=1
 

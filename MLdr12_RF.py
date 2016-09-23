@@ -583,6 +583,7 @@ for n in range(0,settings.n_runs):
     plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
     decision_boundaries_MINT_outnames = plots.decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
     decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
+    decision_boundaries_DT_outnames = plots.decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
