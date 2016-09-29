@@ -75,6 +75,10 @@ else:
 # Extra options before running
 traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find and exclude unclassified objects (subclass)
 
+# Cut all unclean photometry
+traindata=traindata[traindata['clean']==1]
+preddata=preddata[preddata['clean']==1]
+
 filt_train_all= {} # Set up arrays
 filt_predict_all = {}
 filt_names={}
@@ -170,6 +174,8 @@ objc_type_tr_g = traindata['type_g']
 objc_type_tr_r = traindata['type_r']
 objc_type_tr_i = traindata['type_i']
 objc_type_tr_z = traindata['type_z']
+dered_tr_r = traindata['dered_r']
+clean_tr = traindata['clean']
 
 if settings.make_binary == 0:
     XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
@@ -202,6 +208,8 @@ objc_type_pr_g = preddata['type_g']
 objc_type_pr_r = preddata['type_r']
 objc_type_pr_i = preddata['type_i']
 objc_type_pr_z = preddata['type_z']
+dered_pr_r= preddata['dered_r']
+clean_pr = preddata['clean']
 
 if settings.make_binary == 0:
     XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
@@ -226,9 +234,9 @@ if settings.objc_type_cuts==1:
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
 XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
-,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z\
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r\
  = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
-,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z)
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r)
 
 XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
@@ -246,6 +254,8 @@ objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_ty
 objc_type_tr[0:traindatanum],objc_type_tr_u[0:traindatanum],objc_type_tr_g[0:traindatanum],objc_type_tr_r[0:traindatanum],objc_type_tr_i[0:traindatanum],objc_type_tr_z[0:traindatanum]
 objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z=\
 objc_type_pr[0:predictdatanum],objc_type_pr_u[0:predictdatanum],objc_type_pr_g[0:predictdatanum],objc_type_pr_r[0:predictdatanum],objc_type_pr_i[0:predictdatanum],objc_type_pr_z[0:predictdatanum]
+dered_pr_r=dered_pr_r[0:predictdatanum]
+dered_tr_r=dered_tr_r[0:traindatanum]
 # Cuts for doublesubrun
 subclass_tr = subclass_tr[0:traindatanum]
 subclass_names_tr = subclass_names_tr[0:traindatanum]
@@ -261,19 +271,26 @@ yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
 if settings.cut_outliers==1:
+    logger.info('Cutting outliers. Objects before: %s' %len(XX))
     clf_train=covariance.EllipticEnvelope()
-    clf_train.fit(XX[:,44:49])
-    train_inlier=clf_train.predict(XX[:,44:49])
+    clf_train.fit(XX)
+    train_inlier=clf_train.predict(XX)
     XX=XX[train_inlier==1]
     yy=yy[train_inlier==1]
+    logger.info('Objects after: %s'%len(XX))
+    traindatanum=len(XX)
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
 
 #OBJC COMPARISONS
-gals_spec=yy==0
-ps_spec=yy>0
+gals_spec_tr=yy==0
+ps_spec_tr=yy>0
+gals_spec_pr=yypredict==0
+ps_spec_pr=yypredict>0
 #TRAINING
+gals_objc_tr=objc_type_tr==3
+ps_objc_tr = objc_type_tr==6
 gals_objc_tr_u=objc_type_tr_u==3
 ps_objc_tr_u = objc_type_tr_u==6
 gals_objc_tr_g=objc_type_tr_g==3
@@ -284,29 +301,35 @@ gals_objc_tr_i=objc_type_tr_i==3
 ps_objc_tr_i = objc_type_tr_i==6
 gals_objc_tr_z=objc_type_tr_z==3
 ps_objc_tr_z = objc_type_tr_z==6
-gals_corr_tr_u=(sum(gals_objc_tr_u[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_tr_u=(sum(ps_objc_tr_u[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_tr_u=(sum(gals_objc_tr_u[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_u[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_tr_g=(sum(gals_objc_tr_g[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_tr_g=(sum(ps_objc_tr_g[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_tr_g=(sum(gals_objc_tr_g[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_g[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_tr_r=(sum(gals_objc_tr_r[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_tr_r=(sum(ps_objc_tr_r[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_tr_r=(sum(gals_objc_tr_r[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_r[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_tr_i=(sum(gals_objc_tr_i[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_tr_i=(sum(ps_objc_tr_i[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_tr_i=(sum(gals_objc_tr_i[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_i[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_tr_z=(sum(gals_objc_tr_z[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_tr_z=(sum(ps_objc_tr_z[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_tr_z=(sum(gals_objc_tr_z[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_tr_z[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_tr=(sum(gals_objc_tr[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr=(sum(ps_objc_tr[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr=(sum(gals_objc_tr[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_u=(sum(gals_objc_tr_u[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_u=(sum(ps_objc_tr_u[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_u=(sum(gals_objc_tr_u[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_u[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_g=(sum(gals_objc_tr_g[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_g=(sum(ps_objc_tr_g[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_g=(sum(gals_objc_tr_g[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_g[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_r=(sum(gals_objc_tr_r[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_r=(sum(ps_objc_tr_r[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_r=(sum(gals_objc_tr_r[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_r[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_i=(sum(gals_objc_tr_i[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_i=(sum(ps_objc_tr_i[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_i=(sum(gals_objc_tr_i[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_i[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_z=(sum(gals_objc_tr_z[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_z=(sum(ps_objc_tr_z[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_z=(sum(gals_objc_tr_z[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_z[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
 
 logger.info('OBJC_TYPE CUT RESULTS(training):')
+logger.info('ALL BANDS: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr,ps_corr_tr,tot_corr_tr))
 logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u))
 logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g))
 logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r))
 logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i))
 logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z))
 
+gals_objc_pr=objc_type_pr==3
+ps_objc_pr = objc_type_pr==6
 gals_objc_pr_u=objc_type_pr_u==3
 ps_objc_pr_u = objc_type_pr_u==6
 gals_objc_pr_g=objc_type_pr_g==3
@@ -317,29 +340,38 @@ gals_objc_pr_i=objc_type_pr_i==3
 ps_objc_pr_i = objc_type_pr_i==6
 gals_objc_pr_z=objc_type_pr_z==3
 ps_objc_pr_z = objc_type_pr_z==6
-gals_corr_pr_u=(sum(gals_objc_pr_u[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_pr_u=(sum(ps_objc_pr_u[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_pr_u=(sum(gals_objc_pr_u[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_u[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_pr_g=(sum(gals_objc_pr_g[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_pr_g=(sum(ps_objc_pr_g[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_pr_g=(sum(gals_objc_pr_g[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_g[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_pr_r=(sum(gals_objc_pr_r[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_pr_r=(sum(ps_objc_pr_r[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_pr_r=(sum(gals_objc_pr_r[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_r[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_pr_i=(sum(gals_objc_pr_i[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_pr_i=(sum(ps_objc_pr_i[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_pr_i=(sum(gals_objc_pr_i[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_i[ps_spec]==ps_spec[ps_spec]))/traindatanum
-gals_corr_pr_z=(sum(gals_objc_pr_z[gals_spec]==gals_spec[gals_spec])/sum(gals_spec))
-ps_corr_pr_z=(sum(ps_objc_pr_z[ps_spec]==ps_spec[ps_spec])/sum(ps_spec))
-tot_corr_pr_z=(sum(gals_objc_pr_z[gals_spec]==gals_spec[gals_spec])+sum(ps_objc_pr_z[ps_spec]==ps_spec[ps_spec]))/traindatanum
+gals_corr_pr=(sum(gals_objc_pr[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr=(sum(ps_objc_pr[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr=(sum(gals_objc_pr[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_u=(sum(gals_objc_pr_u[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_u=(sum(ps_objc_pr_u[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_u=(sum(gals_objc_pr_u[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_u[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_g=(sum(gals_objc_pr_g[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_g=(sum(ps_objc_pr_g[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_g=(sum(gals_objc_pr_g[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_g[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_r=(sum(gals_objc_pr_r[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_r=(sum(ps_objc_pr_r[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_r=(sum(gals_objc_pr_r[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_r[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_i=(sum(gals_objc_pr_i[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_i=(sum(ps_objc_pr_i[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_i=(sum(gals_objc_pr_i[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_i[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_z=(sum(gals_objc_pr_z[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_z=(sum(ps_objc_pr_z[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_z=(sum(gals_objc_pr_z[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_z[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
 
 logger.info('OBJC_TYPE CUT RESULTS(predict):')
+logger.info('ALL BANDS: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr,ps_corr_pr,tot_corr_pr))
 logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u))
 logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_g,ps_corr_pr_g,tot_corr_pr_g))
 logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_r,ps_corr_pr_r,tot_corr_pr_r))
 logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i))
 logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z))
 
+objc_results={'training':{'ALL':[gals_corr_tr,ps_corr_tr,tot_corr_tr],'U':[gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u]\
+,'G':[gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g],'R':[gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r],'I':[gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i]\
+,'Z':[gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z]},'predict':{'ALL':[gals_corr_pr,ps_corr_pr,tot_corr_pr],'U':[gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u]\
+,'G':[gals_corr_pr_g,ps_corr_pr_g,tot_corr_pr_g],'R':[gals_corr_pr_r,ps_corr_pr_r,tot_corr_pr_r],'I':[gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i]\
+,'Z':[gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z]}}
 
 if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}
@@ -672,6 +704,7 @@ for n in range(0,settings.n_runs):
     decision_boundaries_MINT_outnames = plots.decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
     decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
     decision_boundaries_DT_outnames = plots.decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
+    plots_depth_acc_outnames = plots.plot_depth_acc(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,dered_tr_r,dered_pr_r)
 
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
@@ -781,7 +814,7 @@ else:
 htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
 ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
 ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames,results_dict)
+,plots_mic_contributions_outnames,results_dict,decision_boundaries_outnames,plots_depth_acc_outnames)
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515

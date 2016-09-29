@@ -659,7 +659,7 @@ def decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr):
             xaxes = axes.get_xlim()
             absx=xaxes[1]-xaxes[0]
             deltax=0.145-xaxes[0]
-#            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
+            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
             plt.axvline(x=.145,ymax=deltay/absy, linewidth=2,color='black')
             plt.xlabel(feat_names[combs[i][0]])
             plt.ylabel(feat_names[combs[i][1]])
@@ -724,7 +724,7 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
             xaxes = axes.get_xlim()
             absx=xaxes[1]-xaxes[0]
             deltax=0.145-xaxes[0]
-#            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
+            plt.axhline(y=.145,xmax=deltax/absx, linewidth=2,color='black')
             plt.axvline(x=.145,ymax=deltay/absy, linewidth=2,color='black')
             plt.xlabel(feat_names[combs[i][0]])
             plt.ylabel(feat_names[combs[i][1]])
@@ -733,6 +733,40 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
             plt.savefig(outname)
             plt.close(fig)
             outnamelist.append(outname)
+    return outnamelist
+
+def plot_depth_acc(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,dered_tr_r,dered_pr_r):
+    outnamelist=[]
+    if settings.plot_depth_acc==1:
+        dirs=os.listdir(path)
+        savedir='plot_depth_acc' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)       
+#        for i in range(len(feat_names)): # Plot for all filters
+#                fig=plt.figure()
+#            f, (axarr) = plt.subplots(2, 2)#,figsize=(14, 5))
+            
+        true_class = yypredict==result
+        outliermask1=is_outlier(dered_pr_r)
+        totalmask_true = (true_class) & (~outliermask1)
+        # plot
+        hist_true,bin_edges,patches = plt.hist(dered_pr_r[totalmask_true], bins=80)
+        hist_total,bin_edges_tot,patches_tot= plt.hist(dered_pr_r[~outliermask1], bins=80,range=(bin_edges.min(),bin_edges.max()))
+        hist_acc = (hist_true/hist_total)
+        hist_acc = numpy.nan_to_num(hist_acc)
+        hist_acc = hist_acc*100
+        plt.figure()
+        plt.step(bin_edges[:-1],hist_acc)
+        plt.ylim(0,110)
+        plt.title('Depth Accuracy in DERED_R')
+        plt.xlabel('DERED_R')
+        plt.ylabel('Accuracy (%)')
+        outname='plots/'+savedir+'/depth_acc_DR_R.png'
+        outnamelist.append(outname)
+        plt.tight_layout()
+        plt.savefig(outname)
+        plt.close()
     return outnamelist
 
 def get_function(function_string):

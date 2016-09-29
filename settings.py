@@ -6,11 +6,11 @@ predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict_wt
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']\
-,['CMODELMAG_U','CMODELMAG_G','CMODELMAG_R','CMODELMAG_I','CMODELMAG_Z']]        # Filter list as it is in fits file
+,['CMODELMAG_U_EXT','CMODELMAG_G_EXT','CMODELMAG_R_EXT','CMODELMAG_I_EXT','CMODELMAG_Z_EXT']]        # Filter list as it is in fits file
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-onlyuse=['PSFMAG_U - CMODELMAG_U','PSFMAG_G - CMODELMAG_G','PSFMAG_R - CMODELMAG_R','PSFMAG_I - CMODELMAG_I','PSFMAG_Z - CMODELMAG_Z']
+onlyuse=['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
 
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
@@ -37,7 +37,7 @@ compute_contribution_mic=0                                                  # Do
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
 
-calc_MINT = 0 # Does not work in OvsA
+calc_MINT = 1 # Does not work in OvsA
 MINT_n_feat=10
 
 compute_mifs=0 # Does not work in OvsA
@@ -52,7 +52,7 @@ cut_outliers=0
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':10}         # MLA settings
+MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 n_runs = 1     
                                                            
@@ -80,8 +80,9 @@ plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
 plot_decision_boundaries_MINT = 0                                                 # Only works with MINT so far
-plot_decision_boundaries = 0
-plot_decision_boundaries_DT = 1
+plot_decision_boundaries = 1
+plot_decision_boundaries_DT = 0
+plot_depth_acc = 1
 
 get_images=1
 

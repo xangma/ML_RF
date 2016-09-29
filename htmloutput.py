@@ -13,7 +13,7 @@ from markup import oneliner as e
 def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
 ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
 ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames,results_dict):
+,plots_mic_contributions_outnames,results_dict,decision_boundaries_outnames,plots_depth_acc_outnames):
         # Make index html
     os.chdir(settings.programpath)
     html_title='Results for run: %s' %ind_run_name
@@ -139,7 +139,14 @@ def htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,
         for i in range(len(plots_mic_contributions_outnames)):
             page_plots.p("MIC of Contribution to P(%s) for each feature"%uniquetarget_tr[0][i])
             page_plots.img(src=plots_mic_contributions_outnames[i])
-    
+    if settings.plot_depth_acc == 1:
+        for i in range(len(plots_depth_acc_outnames)):
+            page_plots.p("Depth Accuracy DERED_R")
+            page_plots.img(src=plots_depth_acc_outnames[i])
+    if settings.plot_decision_boundaries == 1:
+        for i in range(len(decision_boundaries_outnames)):
+            page_plots.p("Decision Boundary %s"%i)
+            page_plots.img(src=decision_boundaries_outnames[i])
     allfiltplots= [s for s in plots_bandvprob_outnames if 'allfilt' in s]
     for i in range(len(allfiltplots)):
         page_plots.p(["",allfiltplots[i]])

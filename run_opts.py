@@ -17,7 +17,7 @@ from collections import defaultdict
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
 def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
-,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z):
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
         checkmagspos_log=logging.getLogger('checkmagspos')
@@ -28,8 +28,8 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
         for i in range(len(filtstats)): # For every filter
             n=bottom+filtstats[i][0]
             checkmagspos_log.info('Checking mags in XX: %s:%s' %(bottom, n))
-            negmagsXX = XX[:,bottom:n] < 0
-            negmagsXXpred = XXpredict[:,bottom:n] < 0
+            negmagsXX = XX[:,bottom:n] < 5
+            negmagsXXpred = XXpredict[:,bottom:n] < 5
             bottom=n+filtstats[i][1]
             negmagXXsum = numpy.sum(negmagsXX,axis=1)
             negmagXXpredsum = numpy.sum(negmagsXXpred,axis=1)
@@ -55,12 +55,14 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
             objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z\
             = objc_type_tr[XX_neg_index],objc_type_tr_u[XX_neg_index],objc_type_tr_g[XX_neg_index],objc_type_tr_r[XX_neg_index],objc_type_tr_i[XX_neg_index],objc_type_tr_z[XX_neg_index]\
             ,objc_type_pr[XXpred_neg_index],objc_type_pr_u[XXpred_neg_index],objc_type_pr_g[XXpred_neg_index],objc_type_pr_r[XXpred_neg_index],objc_type_pr_i[XXpred_neg_index],objc_type_pr_z[XXpred_neg_index]
-
+            dered_tr_r=dered_tr_r[XX_neg_index]
+            dered_pr_r=dered_pr_r[XXpred_neg_index]
+            
         return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
-        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
     else:
         return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
-        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
 
 def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
     if len(settings.weightinput) > 0:

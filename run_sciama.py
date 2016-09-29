@@ -18,8 +18,8 @@ dirs=os.listdir(cwd)
 
 # Variables to iterate through
 
-#n_estimators=numpy.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192])
-n_estimators=numpy.array([16])
+n_estimators=numpy.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192])
+#n_estimators=numpy.array([16])
 n_train=numpy.array([50,100,500,1000,2500,5000,10000,25000])
 n_depth=numpy.array([2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,'None'])
 
