@@ -28,10 +28,13 @@ n_depth=numpy.array([2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,'None'])
 timestr = time.strftime("%Y%m%d-%H%M%S")
 os.chdir(programpath+'runresults')
 numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_depth=n_depth,n_train=n_train,filters=filters,use_colours=use_colours)
+
+runpaths=[]
+runnames=[]
 for k in range(0,len(n_estimators)):
     for j in range(0,len(n_train)):
         for i in range(0,len(n_depth)):
-            run_namewo='RUN_'+timestr+'_n_depth_'+str(n_depth[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
+            run_namewo='RUN_'+timestr+'MINT'+'_n_depth_'+str(n_depth[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
             run_name = '/'+run_namewo+'/'
             
             fullpath=programpath+'runresults'+run_name
@@ -41,11 +44,13 @@ for k in range(0,len(n_estimators)):
             dirs_runresults = os.listdir(programpath+'runresults')
             if run_namewo not in dirs_runresults:
                 os.mkdir(fullpath)
-            
+            runpaths.append(fullpath)
+            runnames.append(run_namewo)
             shutil.copy(programpath+'MLdr12_RF.py',fullpath+'MLdr12_RF.py')
             shutil.copy(programpath+'plots.py',fullpath+'plots.py')
             shutil.copy(programpath+'settings.py',fullpath+'settings.py')
             shutil.copy(programpath+'run_opts.py',fullpath+'run_opts.py')
+            shutil.copy(programpath+'htmloutput.py',fullpath+'htmloutput.py')
             os.chdir(fullpath)
             cwd=os.getcwd()
             print(cwd)
@@ -60,7 +65,8 @@ for k in range(0,len(n_estimators)):
                 set_file.write("\nprob_outfile = 'ML_RF_probs_%s'" %run_namewo)
                 set_file.write("\nlog_outfile='ML_RF_log_%s'" %run_namewo)
                 set_file.write("\nstats_outfile='ML_RF_stats_%s'" %run_namewo)
-            
+                set_file.write("\nfeatnames_outfile='ML_RF_featnames_%s'" %run_namewo)
+                set_file.write("\nscores_outfile='ML_RF_scores_%s'" %run_namewo)
             dirs_run=os.listdir(fullpath)
             runfull=fullpath+'MLdr12_RF.py'
             
@@ -71,7 +77,10 @@ for k in range(0,len(n_estimators)):
             # Customize your options here
             job_name = "ML_RF_sciamajob_%s" %run_namewo
             walltime = "1:00:00"
-            processors = "nodes=1:ppn=4"
+            if n_depth[i]=='None':
+                processors = "nodes=1:ppn=6"
+            else:
+                processors = "nodes=1:ppn=4"
             command = "python MLdr12_RF.py"
              
             job_string = """#!/bin/bash
@@ -94,3 +103,6 @@ for k in range(0,len(n_estimators)):
             print(out)
              
             time.sleep(1)
+
+os.chdir(programpath+'runresults')
+numpy.save("paths_%s" %('RUN_'+timestr),numpy.column_stack((runpaths,runnames)))

@@ -21,11 +21,13 @@ pyspark_remake_csv=0							    # Remake csv files for pyspark? (If you know the 
 make_binary = 1
 
 saveresults=1                                                               # Save results or not? 
-feat_outfile = 'ML_RF_feat_'                                  # Filename for feature importance results
+feat_outfile = 'ML_RF_feat'                                  # Filename for feature importance results
 result_outfile = 'ML_RF_results'                                          # Filename for results
 prob_outfile = 'ML_RF_probs'
 log_outfile='ML_RF_logfile'						    # Name of output logfile
 stats_outfile='ML_RF_stats'
+featnames_outfile='ML_RF_featnames'
+scores_outfile='ML_RF_scores'
 
 # THESE TAKE CONSIDERABLY MORE TIME (and also save automatically)
 output_all_trees = 0

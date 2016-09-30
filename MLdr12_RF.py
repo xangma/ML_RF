@@ -561,8 +561,9 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         numpy.savetxt(settings.result_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
         numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
+        numpy.save(settings.featnames_outfile+('_%s' %ind_run_name),feat_names)
         numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
-    
+        numpy.savetxt(settings.scores_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((recall,precision,[accuracy,0],score)),header="recall precision accuracy score")
     return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions
 
 mic_runs,pearson_runs,mic_contributions_runs=[],[],[]
