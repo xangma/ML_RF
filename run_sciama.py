@@ -16,12 +16,18 @@ import time
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
+MINT = calc_MINT
+
 # Variables to iterate through
 
-n_estimators=numpy.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192])
+n_estimators=numpy.array([4,8,16,32,64,128,256,512,1024,2048,4096,8192])
 #n_estimators=numpy.array([16])
-n_train=numpy.array([50,100,500,1000,2500,5000,10000,25000])
-n_depth=numpy.array([2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,'None'])
+n_train=numpy.array([100,500,1000,2500,5000,10000,25000])
+n_depth=numpy.array([3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,'None'])
+if MINT==1:
+    n_proc= numpy.array([4,7,8,9,10,11,12,13,14,15,16])
+else:
+    n_proc= numpy.array([4,4,4,5,5,5,6,6,6,8,8])
 
 # CREATE DIRECTORIES AND COPY CODE UP
 
@@ -34,7 +40,7 @@ runnames=[]
 for k in range(0,len(n_estimators)):
     for j in range(0,len(n_train)):
         for i in range(0,len(n_depth)):
-            run_namewo='RUN_'+timestr+'MINT'+'_n_depth_'+str(n_depth[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
+            run_namewo='RUN_'+timestr+'MINT_norad'+'_n_depth_'+str(n_depth[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
             run_name = '/'+run_namewo+'/'
             
             fullpath=programpath+'runresults'+run_name
@@ -77,11 +83,12 @@ for k in range(0,len(n_estimators)):
             # Customize your options here
             job_name = "ML_RF_sciamajob_%s" %run_namewo
             walltime = "1:00:00"
-            if n_depth[i]=='None':
-                processors = "nodes=1:ppn=6"
-            else:
-                processors = "nodes=1:ppn=4"
+            processors = "nodes=1:ppn=%s" %n_proc[i]
             command = "python MLdr12_RF.py"
+            if MINT==1:            
+                queue = ""
+            else: 
+                queue="#PBS -q sciama1.q"
              
             job_string = """#!/bin/bash
             #PBS -N %s_numcat*10
@@ -89,10 +96,10 @@ for k in range(0,len(n_estimators)):
             #PBS -l %s
             #PBS -j oe
             #PBS -V
-            #PBS -q sciama1.q
+            %s
             cd %s
             echo "Current working directory is `pwd`"
-            %s""" % (job_name, walltime, processors,fullpath, command)
+            %s""" % (job_name, walltime, processors,queue,fullpath, command)
              
             # Send job_string to qsub
             out,errs=p.communicate(input=job_string)

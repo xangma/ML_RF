@@ -39,7 +39,7 @@ compute_contribution_mic=0                                                  # Do
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
 
-calc_MINT = 1 # Does not work in OvsA
+calc_MINT = 0 # Does not work in OvsA
 MINT_n_feat=10
 
 compute_mifs=0 # Does not work in OvsA

@@ -21,11 +21,14 @@ os.chdir('runresults')
 runresults_path=os.getcwd()
 runresults_dirs=os.listdir(runresults_path)
 
-run_name='RUN_20160719-2347'
+run_name='RUN_20160930-111136'
 stats_name='stats_'+run_name
+paths_name='paths_'+run_name
 dirs_run = [s for s in runresults_dirs if run_name in s]
 stats_file= [s for s in runresults_dirs if stats_name in s]
+path_file= [s for s in runresults_dirs if paths_name in s]
 dirs_run.remove(stats_file[0])
+dirs_run.remove(path_file[0])
 run_stats=numpy.load(stats_file[0])
 unique_n_depth = run_stats['n_depth']
 unique_n_est=run_stats['n_estimators']
