@@ -132,7 +132,6 @@ else:
     n_colours=len(col_names)
     filt_train_all[0]=filt_train,n_filt,n_colours # Create list of filter sets, with the num of filts and colours
     filt_predict_all[0]=filt_predict,n_filt,n_colours
-
 filtstats={}
 if settings.calculate_cross_colours == 0:
     n_filt=0
@@ -224,11 +223,41 @@ else:
 
 if settings.objc_type_cuts==1:
     logging.info('Cutting as per objc_type calc')
-    objc_res_train=numpy.load('mytype_res_train.npy')
-    objc_res_predict=numpy.load('mytype_res_predict.npy')
+    objc_res_train=numpy.load('/users/moricex/ML_RF/mytype_res_train2.npy')
+    objc_res_predict=numpy.load('/users/moricex/ML_RF/mytype_res_predict2.npy')
     logging.info('Before len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
     XX=XX[objc_res_train[1].astype(bool)]
     XXpredict=XXpredict[objc_res_predict[1].astype(bool)]
+    specz_tr=specz_tr[objc_res_train[1].astype(bool)]
+    specz_pr=specz_pr[objc_res_predict[1].astype(bool)]
+    classnames_tr=classnames_tr[objc_res_train[1].astype(bool)]
+    classnames_pr=classnames_pr[objc_res_predict[1].astype(bool)]
+    subclass_tr=subclass_tr[objc_res_train[1].astype(bool)]
+    subclass_names_tr=subclass_names_tr[objc_res_train[1].astype(bool)]
+    subclass_pr=subclass_pr[objc_res_predict[1].astype(bool)]
+    subclass_names_pr=subclass_names_pr[objc_res_predict[1].astype(bool)]
+    OBJID_tr=OBJID_tr[objc_res_train[1].astype(bool)]
+    OBJID_pr=OBJID_pr[objc_res_predict[1].astype(bool)]
+    SPECOBJID_pr=SPECOBJID_pr[objc_res_predict[1].astype(bool)]
+    RA_tr=RA_tr[objc_res_train[1].astype(bool)]
+    DEC_tr=DEC_tr[objc_res_train[1].astype(bool)]
+    RA_pr=RA_pr[objc_res_predict[1].astype(bool)]
+    DEC_pr=DEC_pr[objc_res_predict[1].astype(bool)]
+    objc_type_tr=objc_type_tr[objc_res_train[1].astype(bool)]
+    objc_type_tr_u=objc_type_tr_u[objc_res_train[1].astype(bool)]
+    objc_type_tr_g=objc_type_tr_g[objc_res_train[1].astype(bool)]
+    objc_type_tr_r=objc_type_tr_r[objc_res_train[1].astype(bool)]
+    objc_type_tr_i=objc_type_tr_i[objc_res_train[1].astype(bool)]
+    objc_type_tr_z=objc_type_tr_z[objc_res_train[1].astype(bool)]
+    objc_type_pr=objc_type_pr[objc_res_predict[1].astype(bool)]
+    objc_type_pr_u=objc_type_pr_u[objc_res_predict[1].astype(bool)]
+    objc_type_pr_g=objc_type_pr_g[objc_res_predict[1].astype(bool)]
+    objc_type_pr_r=objc_type_pr_r[objc_res_predict[1].astype(bool)]
+    objc_type_pr_i=objc_type_pr_i[objc_res_predict[1].astype(bool)]
+    objc_type_pr_z=objc_type_pr_z[objc_res_predict[1].astype(bool)]
+    dered_tr_r=dered_tr_r[objc_res_train[1].astype(bool)]
+    dered_pr_r=dered_pr_r[objc_res_predict[1].astype(bool)]
+
     logging.info('After len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
     
 # Filter out negative magnitudes
@@ -499,7 +528,10 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                 os.remove('plots/tree_example.dot')
         start, end=[],[]
         # Split cats for RAM management
-        numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
+        if settings.MLA == 'sklearn.ensemble.RandomForestClassifier':
+            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs)*10)
+        else:
+            numcats = numpy.int64(2*(XXpredict.size/1024/1024)*10)
         if settings.get_contributions ==1:
             numcats=100
         if numcats < 1:
@@ -562,7 +594,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
         numpy.save(settings.featnames_outfile+('_%s' %ind_run_name),feat_names)
-        numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
+        #numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,accuracy,clf.max_depth)),header="n_est traindatanum predictdatanum accuracy max_depth",fmt="%s")
         numpy.savetxt(settings.scores_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((recall,precision,[accuracy,0],score)),header="recall precision accuracy score")
     return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions
 
@@ -811,11 +843,11 @@ elif settings.compute_mifs == 1:
     get_images(XX_mifs,XXpredict_mifs)
 else:
     get_images(XX,XXpredict)
-
-htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
-,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
-,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames,results_dict,decision_boundaries_outnames,plots_depth_acc_outnames)
+if settings.html_on==1:
+        htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
+        ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
+        ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
+        ,plots_mic_contributions_outnames,results_dict,decision_boundaries_outnames,plots_depth_acc_outnames)
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515

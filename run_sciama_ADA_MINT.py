@@ -7,62 +7,62 @@ Created on Sun Jul  3 12:58:37 2016
 
 import os
 import numpy
-from settings import *
+import settings
 import shutil
 from subprocess import Popen, PIPE
 import time
 
-#os.chdir(programpath) # Change directory
+#os.chdir(settings.programpath) # Change directory
 cwd=os.getcwd()
 dirs=os.listdir(cwd)
 
-MINT = calc_MINT
+#MINT = calc_MINT
 
 # Variables to iterate through
 
 n_estimators=numpy.array([8,16,32,64,128,256,512,1024,2048,4096,8192])
 #n_estimators=numpy.array([16])
 n_train=numpy.array([100,500,1000,2500,5000,10000,25000])
-n_depth=numpy.array([3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,'None'])
+n_learningrate=numpy.array([0.80,0.84,0.88,0.92,0.96,1.00,1.04,1.08,1.12,1.16,1.20])
 
 #n_estimators=numpy.array([8,16])
 #n_train=numpy.array([100,500])
 #n_depth=numpy.array([3.0,4.0])
-if MINT==1:
-#    n_proc= numpy.array([4,7,8,9,10,11,12,13,14,15,16])
-    n_proc= numpy.array([6,8,8,10,10,12,12])
-else:
-    n_proc= numpy.array([6,8,8,10,10,12,12])
+#if MINT==1:
+##    n_proc= numpy.array([4,7,8,9,10,11,12,13,14,15,16])
+#    n_proc= numpy.array([6,8,8,10,10,12,12])
+#else:
+n_proc= numpy.array([6,8,8,10,10,12,12])
 
 # CREATE DIRECTORIES AND COPY CODE UP
 
 timestr = time.strftime("%Y%m%d-%H%M%S")
-os.chdir(programpath+'runresults')
-numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_depth=n_depth,n_train=n_train,filters=filters,use_colours=use_colours)
+os.chdir(settings.programpath+'runresults')
+numpy.savez("stats_%s" %('RUN_'+timestr),n_estimators=n_estimators,n_learningrate=n_learningrate,n_train=n_train)#filters=filters,use_colours=use_colours)
 
 runpaths=[]
 runnames=[]
 for k in range(0,len(n_estimators)):
     for j in range(0,len(n_train)):
-        for i in range(0,len(n_depth)):
-            run_nameopts='RUN_'+timestr+'_MINT_norad'
-            run_namewo=run_nameopts+'_n_depth_'+str(n_depth[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
+        for i in range(0,len(n_learningrate)):
+            run_nameopts='RUN_'+timestr+'_ADA_MINT'
+            run_namewo=run_nameopts+'_n_learningrate_'+str(n_learningrate[i])+'_n_tr_'+str(n_train[j])+'_n_est_'+str(n_estimators[k])#+'max_feat_None' 
             run_name = '/'+run_namewo+'/'
             run_dir=run_nameopts
-            fullpath=programpath+'runresults'+'/'+run_dir+run_name
-            dirs_runresults = os.listdir(programpath+'runresults')
+            fullpath=settings.programpath+'runresults'+'/'+run_dir+run_name
+            dirs_runresults = os.listdir(settings.programpath+'runresults')
             if run_dir not in dirs_runresults:
                 os.mkdir(run_dir)
-            dirs_runresults = os.listdir(programpath+'runresults/'+run_dir)
+            dirs_runresults = os.listdir(settings.programpath+'runresults/'+run_dir)
             if run_namewo not in dirs_runresults:
                 os.mkdir(fullpath)
             runpaths.append(fullpath)
             runnames.append(run_namewo)
-            shutil.copy(programpath+'MLdr12_RF.py',fullpath+'MLdr12_RF.py')
-            shutil.copy(programpath+'plots.py',fullpath+'plots.py')
-            shutil.copy(programpath+'settings.py',fullpath+'settings.py')
-            shutil.copy(programpath+'run_opts.py',fullpath+'run_opts.py')
-            shutil.copy(programpath+'htmloutput.py',fullpath+'htmloutput.py')
+            shutil.copy(settings.programpath+'MLdr12_RF.py',fullpath+'MLdr12_RF.py')
+            shutil.copy(settings.programpath+'plots.py',fullpath+'plots.py')
+            shutil.copy(settings.programpath+'settings.py',fullpath+'settings.py')
+            shutil.copy(settings.programpath+'run_opts.py',fullpath+'run_opts.py')
+            shutil.copy(settings.programpath+'htmloutput.py',fullpath+'htmloutput.py')
             os.chdir(fullpath)
             cwd=os.getcwd()
             print(cwd)
@@ -70,8 +70,9 @@ for k in range(0,len(n_estimators)):
                 set_file.write("\n# MODIFIED SETTINGS ADDED BY run_sciama.py for run_name:%s"%run_namewo)             # Add settings to bottom of settings.py file here
                 set_file.write("\nprogrampath='"+fullpath+"'")
                 set_file.write("\n")
-                set_file.write("\nMLA = 'sklearn.ensemble.RandomForestClassifier'")
-                set_file.write("\nMLAset = {'n_estimators': %s, 'n_jobs': 4,'bootstrap':True,'verbose':True,'max_depth':%s}"%(n_estimators[k],n_depth[i]))
+#MLAset = 
+                set_file.write("\nMLA = 'sklearn.ensemble.AdaBoostClassifier'")
+                set_file.write("\nMLAset = {'n_estimators':%s,'learning_rate':%s}"%(n_estimators[k],n_learningrate[i]))
                 set_file.write("\ntraindatanum=%s"%n_train[j])
                 set_file.write("\nfeat_outfile = 'ML_RF_feat_%s'" %run_namewo)
                 set_file.write("\nresult_outfile = 'ML_RF_results_%s'" %run_namewo)
@@ -80,6 +81,8 @@ for k in range(0,len(n_estimators)):
                 set_file.write("\nstats_outfile='ML_RF_stats_%s'" %run_namewo)
                 set_file.write("\nfeatnames_outfile='ML_RF_featnames_%s'" %run_namewo)
                 set_file.write("\nscores_outfile='ML_RF_scores_%s'" %run_namewo)
+                set_file.write("\ncalc_MINT = 1")
+                set_file.write("\nMINT_n_feat=10")
             dirs_run=os.listdir(fullpath)
             runfull=fullpath+'MLdr12_RF.py'
             
@@ -92,11 +95,11 @@ for k in range(0,len(n_estimators)):
             walltime = "6:00:00"
             processors = "nodes=1:ppn=%s" %n_proc[j]
             command = "python MLdr12_RF.py"
-            if MINT==1:            
-#                queue = ""
-                queue="#PBS -q sciama1.q"
-            else: 
-                queue="#PBS -q sciama1.q"
+#            if MINT==1:            
+##                queue = ""
+#                queue="#PBS -q sciama1.q"
+#            else: 
+            queue="#PBS -q sciama1.q"
              
             job_string = """#!/bin/bash
             #PBS -N %s_numcat*10
@@ -119,5 +122,5 @@ for k in range(0,len(n_estimators)):
              
             time.sleep(1)
 
-os.chdir(programpath+'runresults')
+os.chdir(settings.programpath+'runresults')
 numpy.save("paths_%s" %run_nameopts,numpy.column_stack((runpaths,runnames)))

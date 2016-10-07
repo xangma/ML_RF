@@ -55,6 +55,8 @@ diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
 MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
+#MLA = 'sklearn.ensemble.AdaBoostClassifier'
+#MLAset = {'n_estimators':1024,'learning_rate':1}
 actually_run=1                                                              # Actually run the MLA
 n_runs = 1     
                                                            
@@ -72,9 +74,9 @@ calculate_cross_colours=1
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)
-plotbandvprob = 1								    # Plot hist of filter band vs prob for each class
-plotcolourvprob = 1
-plotfeatimp = 1                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
+plotbandvprob = 0							    # Plot hist of filter band vs prob for each class
+plotcolourvprob = 0
+plotfeatimp = 0                                                       # Plot hist of colour bands vs prob for each class (for class, not subclass)
 plot_col_rad = 0                                                    # Doesn't work with MINT or mifs ...
 plot_col_cont = 0
 plot_col_cont_true = 0
@@ -82,10 +84,11 @@ plot_mic = 0
 plot_pearson=0
 plot_mic_cont=0
 plot_decision_boundaries_MINT = 0                                                 # Only works with MINT so far
-plot_decision_boundaries = 1
+plot_decision_boundaries = 0
 plot_decision_boundaries_DT = 0
-plot_depth_acc = 1
+plot_depth_acc = 0
 
-get_images=1
+get_images=0
+html_on=0
 
 objc_type_cuts=0
