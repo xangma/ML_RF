@@ -35,12 +35,14 @@ get_contributions = 0
 get_perfect_contributions=0
 compute_contribution_mic=0                                                  # Done post ML fit (to calc and save new contributions)
 
-#Preprocessing features analysis functioms
+#Preprocessing features analysis functions
 compute_mic=0                                                               # Done pre-processing WARNING - takes some time. Computes Maximal Information Coefficients between all features on training set
 compute_pearson=0
 
-calc_MINT = 0 # Does not work in OvsA
-MINT_n_feat=10
+# WARNING: MINT saves results to save computing time. This is hardcoded in run_opts.
+# WARNING: This means if your input catalogue/or targetted classes changes for any reason, these must be deleted and recalculated.
+calc_MINT = 1 # Does not work in OvsA
+MINT_n_feat=4
 
 compute_mifs=0 # Does not work in OvsA
 mifs_types=['JMI','JMIM','MRMR']

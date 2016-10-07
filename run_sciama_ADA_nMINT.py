@@ -122,7 +122,7 @@ for nmint in range(0,len(MINT_n_feat)):
                 print(job_string)
                 print(out)
                  
-                time.sleep(1)
+                time.sleep(1.5)
 
 os.chdir(settings.programpath+'runresults')
 numpy.save("paths_%s" %run_nameopts,numpy.column_stack((runpaths,runnames)))
