@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #[PROGRAM OPTIONS]
-programpath='/users/moricex/ML_RF/'                                         # Root path to program 
+programpath='/users/moricex/ML_RF/runresults/gridsearch/RF/'                                         # Root path to program 
 trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train_wtype.fit'       # Input training data
 predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict_wtype.fit'      # Input prediction data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
@@ -31,6 +31,7 @@ scores_outfile='ML_RF_scores'
 
 # THESE TAKE CONSIDERABLY MORE TIME (and also save automatically)
 output_all_trees = 0
+output_ex_tree = 0
 get_contributions = 0
 get_perfect_contributions=0
 compute_contribution_mic=0                                                  # Done post ML fit (to calc and save new contributions)
@@ -41,7 +42,7 @@ compute_pearson=0
 
 # WARNING: MINT saves results to save computing time. This is hardcoded in run_opts.
 # WARNING: This means if your input catalogue/or targetted classes changes for any reason, these must be deleted and recalculated.
-calc_MINT = 1 # Does not work in OvsA
+calc_MINT = 0 # Does not work in OvsA
 MINT_n_feat=4
 
 compute_mifs=0 # Does not work in OvsA
@@ -56,7 +57,7 @@ cut_outliers=0
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators': 256, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':None}         # MLA settings
+MLAset = {'n_estimators': 256, 'n_jobs': 8}         # MLA settings
 #MLA = 'sklearn.ensemble.AdaBoostClassifier'
 #MLAset = {'n_estimators':1024,'learning_rate':1}
 actually_run=1                                                              # Actually run the MLA
@@ -73,6 +74,16 @@ calculate_colours=1                                                         # Gi
     # for all filters
 use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 calculate_cross_colours=1
+
+# GRIDSEARCH
+gs_on = 1
+param_grid = {"n_estimators": [64,128,256,512],
+              "max_depth": [3,4,5,6,7,8,9,10,None],
+              "max_features": [1, 3, 5],
+              "min_samples_split": [1, 3, 10],
+              "min_samples_leaf": [1, 3, 10],
+              "bootstrap": [True, False],
+              "criterion": ["gini", "entropy"]}
 
 # PLOTS
 plotsubclasshist=0                                                          # Plot hist of subclasses (for subclass, not classes!)

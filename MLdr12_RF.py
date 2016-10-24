@@ -521,7 +521,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                     os.system('dot -Tpng plots/tree_%s.dot -o plots/tree_%s.png' %(i_tree,i_tree))
                     os.remove('plots/tree_%s.dot' %i_tree)
                     i_tree = i_tree + 1        
-            else:
+            elif settings.output_ex_tree == 1:
                 with open('plots/tree_example.dot', 'w') as my_file:
                     my_file = tree.export_graphviz(clf.estimators_[0], out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
                 os.system('dot -Tpng plots/tree_example.dot -o plots/tree_example.png')
@@ -720,6 +720,8 @@ for n in range(0,settings.n_runs):
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
         settings.trainpath=orig_train_path
         settings.traindatanum=orig_train_num
+    if settings.gs_on == 1:
+        gs_res = run_opts.gridsearch(XX[:,:-1],XXpredict[:,:-1],yy,yypredict,clf)
         
     # PLOTS
     logger.info('Plotting ...')

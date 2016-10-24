@@ -14,6 +14,9 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 from scipy.stats import pearsonr
 from sklearn.metrics import mutual_info_score
 from collections import defaultdict
+from sklearn.model_selection import GridSearchCV
+from time import time
+from sklearn.metrics import classification_report
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
@@ -368,3 +371,58 @@ def calc_MINT(XX,XXpredict,yy): # ALSO CALCULATES MI AND SAVES THEM. MI_XX can u
             loaded=numpy.load('/users/moricex/ML_RF/MINT_res/'+MINT_res_name)
             res=loaded.tolist()
     return res
+
+def gridsearch(XX,XXpredict,yy,yypredict,clf):
+#    tuned_parameters=settings.param_grid
+    param_grid=settings.param_grid  
+    print("Gridsearch start")
+    def report(results, n_top=3):
+        for i in range(1, n_top + 1):
+            candidates = numpy.flatnonzero(results['rank_test_score'] == i)
+            for candidate in candidates:
+                print("Model with rank: {0}".format(i))
+                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(results['mean_test_score'][candidate],results['std_test_score'][candidate]))
+                print("Parameters: {0}".format(results['params'][candidate]))
+                print("")
+    grid_search = GridSearchCV(clf, param_grid=param_grid,cv=10,n_jobs=8,verbose=1)
+    start = time()
+    grid_search.fit(XX, yy)
+
+    print("GridSearchCV took %.2f seconds for %d candidate parameter settings."% (time() - start, len(grid_search.cv_results_['params'])))
+    report(grid_search.cv_results_)
+    return grid_search
+#    X_train, X_test, y_train, y_test = XX,XXpredict,yy,yypredict
+#    
+#    # Set the parameters by cross-validation
+#
+#    scores = ['precision', 'recall']
+#    
+#    for score in scores:
+#        print("# Tuning hyper-parameters for %s" % score)
+#        print()
+#    
+#        clf = GridSearchCV(clf, tuned_parameters, cv=5,
+#                           scoring='%s_macro' % score)
+#        clf.fit(X_train, y_train)
+#    
+#        print("Best parameters set found on development set:")
+#        print()
+#        print(clf.best_params_)
+#        print()
+#        print("Grid scores on development set:")
+#        print()
+#        means = clf.cv_results_['mean_test_score']
+#        stds = clf.cv_results_['std_test_score']
+#        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+#            print("%0.3f (+/-%0.03f) for %r"
+#                  % (mean, std * 2, params))
+#        print()
+#    
+#        print("Detailed classification report:")
+#        print()
+#        print("The model is trained on the full development set.")
+#        print("The scores are computed on the full evaluation set.")
+#        print()
+#        y_true, y_pred = y_test, clf.predict(X_test)
+#        print(classification_report(y_true, y_pred))
+#        print()
