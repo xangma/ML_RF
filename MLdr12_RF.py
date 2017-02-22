@@ -15,6 +15,7 @@ import time
 import plots
 import logging
 import treeinterpreter as ti
+import random
 from sklearn import metrics
 from sklearn import tree
 from sklearn import covariance
@@ -67,10 +68,16 @@ if 'traindata' in locals(): # Check if data is loaded, else load it (Might remov
     logger.info('Data already loaded, skipping')
     logger.info('------------')
 else:
-    traindata=fits.open(settings.trainpath)
-    traindata=traindata[1].data
-    preddata=fits.open(settings.predpath)
-    preddata=preddata[1].data
+#    traindata=fits.open(settings.trainpath)
+#    traindata=traindata[1].data
+#    preddata=fits.open(settings.predpath)
+#    preddata=preddata[1].data
+    datadata=fits.open(settings.datapath)
+    datadata=datadata[1].data # This is by far my favourite line
+    catlen=len(datadata)
+    selected_obj=random.sample(range(catlen), traindatanum+predictdatanum)
+    traindata=datadata[selected_obj[0:traindatanum]]
+    preddata=datadata[selected_obj[traindatanum:traindatanum+predictdatanum]]
 
 # Extra options before running
 traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find and exclude unclassified objects (subclass)
@@ -396,6 +403,28 @@ logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_co
 logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i))
 logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z))
 
+objc_type_pr[gals_objc_pr]=0
+objc_type_pr[ps_objc_pr]=1
+objc_type_pr_u[gals_objc_pr_u]=0
+objc_type_pr_u[ps_objc_pr_u]=1
+objc_type_pr_g[gals_objc_pr_g]=0
+objc_type_pr_g[ps_objc_pr_g]=1
+objc_type_pr_r[gals_objc_pr_r]=0
+objc_type_pr_r[ps_objc_pr_r]=1
+objc_type_pr_i[gals_objc_pr_i]=0
+objc_type_pr_i[ps_objc_pr_i]=1
+objc_type_pr_z[gals_objc_pr_z]=0
+objc_type_pr_z[ps_objc_pr_z]=1
+
+logger.info('SKLEARN METRICS ON PREDICT SET')
+logger.info('ALL: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr),metrics.precision_score(yypredict,objc_type_pr,average=None),metrics.recall_score(yypredict,objc_type_pr,average=None),metrics.f1_score(yypredict,objc_type_pr,average=None)))
+logger.info('U: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_u),metrics.precision_score(yypredict,objc_type_pr_u,average=None),metrics.recall_score(yypredict,objc_type_pr_u,average=None),metrics.f1_score(yypredict,objc_type_pr_u,average=None)))
+logger.info('G: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_g),metrics.precision_score(yypredict,objc_type_pr_g,average=None),metrics.recall_score(yypredict,objc_type_pr_g,average=None),metrics.f1_score(yypredict,objc_type_pr_g,average=None)))
+logger.info('R: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_r),metrics.precision_score(yypredict,objc_type_pr_r,average=None),metrics.recall_score(yypredict,objc_type_pr_r,average=None),metrics.f1_score(yypredict,objc_type_pr_r,average=None)))
+logger.info('I: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_i),metrics.precision_score(yypredict,objc_type_pr_i,average=None),metrics.recall_score(yypredict,objc_type_pr_i,average=None),metrics.f1_score(yypredict,objc_type_pr_i,average=None)))
+logger.info('Z: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_z),metrics.precision_score(yypredict,objc_type_pr_z,average=None),metrics.recall_score(yypredict,objc_type_pr_z,average=None),metrics.f1_score(yypredict,objc_type_pr_z,average=None)))
+
+
 objc_results={'training':{'ALL':[gals_corr_tr,ps_corr_tr,tot_corr_tr],'U':[gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u]\
 ,'G':[gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g],'R':[gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r],'I':[gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i]\
 ,'Z':[gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z]},'predict':{'ALL':[gals_corr_pr,ps_corr_pr,tot_corr_pr],'U':[gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u]\
@@ -567,10 +596,10 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                 train_contributions=tiresult_train[2]
                 bias_train = tiresult_train[1][0]
         
-        accuracy = metrics.accuracy_score(result,yypredict)
-        recall = metrics.recall_score(result,yypredict,average=None)
-        precision = metrics.precision_score(result,yypredict,average=None)
-        score = metrics.f1_score(result, yypredict,average=None)
+        accuracy = metrics.accuracy_score(yypredict,result)
+        recall = metrics.recall_score(yypredict,result,average=None)
+        precision = metrics.precision_score(yypredict,result,average=None)
+        score = metrics.f1_score(yypredict,result,average=None)
         
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
@@ -678,15 +707,16 @@ for n in range(0,settings.n_runs):
             
         else:
             findex=[]
-            for numfilt in range(len(settings.onlyuse)):
-                findex.append(feat_names.index(settings.onlyuse[numfilt]))
-            XX=[XX.T[n] for n in findex]
-            XXpredict=[XXpredict.T[n] for n in findex]
-            XX=numpy.transpose(XX)
-            XX=numpy.column_stack((XX,yy))
-            XXpredict=numpy.transpose(XXpredict)
-            feat_names=[feat_names[n] for n in findex]
-            n_feat= len(findex)
+            if len(settings.onlyuse) > 0:
+                for numfilt in range(len(settings.onlyuse)):
+                    findex.append(feat_names.index(settings.onlyuse[numfilt]))
+                XX=[XX.T[n] for n in findex]
+                XXpredict=[XXpredict.T[n] for n in findex]
+                XX=numpy.transpose(XX)
+                XX=numpy.column_stack((XX,yy))
+                XXpredict=numpy.transpose(XXpredict)
+                feat_names=[feat_names[n] for n in findex]
+                n_feat= len(findex)
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
             results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
             'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
@@ -721,7 +751,10 @@ for n in range(0,settings.n_runs):
         settings.trainpath=orig_train_path
         settings.traindatanum=orig_train_num
     if settings.gs_on == 1:
-        gs_res = run_opts.gridsearch(XX[:,:-1],XXpredict[:,:-1],yy,yypredict,clf)
+        if settings.calc_MINT==0:
+            gs_res = run_opts.gridsearch(XX[:,:-1],XXpredict[:,:-1],yy,yypredict,clf)
+        else:
+            gs_res = run_opts.gridsearch(XX_MINT[:,:-1],XXpredict_MINT[:,:-1],yy,yypredict,clf)
         
     # PLOTS
     logger.info('Plotting ...')

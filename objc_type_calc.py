@@ -4,7 +4,10 @@ Created on Mon Sep 19 12:03:42 2016
 
 @author: moricex
 """
-
+from __future__ import unicode_literals
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('text',usetex=True)
 import astropy.io.fits as fits
 import os
 import settings
@@ -94,40 +97,40 @@ extT=numpy.transpose(ext)
 #mask,psfmagsT,cmodelmagsT,extT,mytype,type_arr = calc_objc_type(traindata,'train')
 #mask,psfmagsT,cmodelmagsT,extT,mytype,type_arr = calc_objc_type(preddata,'predict')
 
-#gals_match=[]
-#ps_match=[]
-#gals_objc_u=traindata['TYPE_U']==3
-#ps_objc_u =  traindata['TYPE_U']==6
-#gals_objc_g=traindata['TYPE_G']==3
-#ps_objc_g =  traindata['TYPE_G']==6
-#gals_objc_r=traindata['TYPE_R']==3
-#ps_objc_r =  traindata['TYPE_R']==6
-#gals_objc_i=traindata['TYPE_I']==3
-#ps_objc_i =  traindata['TYPE_I']==6
-#gals_objc_z=traindata['TYPE_Z']==3
-#ps_objc_z =  traindata['TYPE_Z']==6
-#gals_spec= traindata['SPEC_CLASS_ID']==0
-#ps_spec = traindata['SPEC_CLASS_ID']>0
-#
-#gals_objc_r_MINE=mytype[2]==3
-#ps_objc_r_MINE=mytype[2]==6
-##gals_objc_r_MINE=gals_objc_r_MINE[mask[2]]
-##ps_objc_r_MINE=ps_objc_r_MINE[mask[2]]
-#
-#colourR=psfmagsT[:,2]-(cmodelmagsT[:,2]-extT[:,2])
-#plt.figure()
-#plt.scatter(colourR[ps_objc_r_MINE[0:2500]][0:2500],psfmagsT[:,2][ps_objc_r_MINE[0:2500]][0:2500],color='blue',s=3)
-#plt.scatter(colourR[gals_objc_r_MINE[0:2500]][0:2500],psfmagsT[:,2][gals_objc_r_MINE[0:2500]][0:2500],color='red',s=3)
-#ps_patch = mpatches.Patch(color='blue', label='Point Sources')
-#gals_patch = mpatches.Patch(color='red', label='Galaxies')
-#plt.legend(handles=[gals_patch,ps_patch])
-#plt.title('SDSS Frames colour cut',fontsize=18)
-#plt.legend()
-#plt.axvline(x=0.145,linewidth=2,color='black')
-#plt.ylabel('Psfmag_r',fontsize=15)
-#plt.xlabel('Psfmag_r - Cmodelmag_r',fontsize=15)
-#plt.tight_layout()
-#plt.ylim(10,25)
-#plt.xlim(-1,4)
-#plt.show()
-#plt.savefig('FRAMES_R_BAND_CUT.png')
+gals_match=[]
+ps_match=[]
+gals_objc_u=traindata['TYPE_U']==3
+ps_objc_u =  traindata['TYPE_U']==6
+gals_objc_g=traindata['TYPE_G']==3
+ps_objc_g =  traindata['TYPE_G']==6
+gals_objc_r=traindata['TYPE_R']==3
+ps_objc_r =  traindata['TYPE_R']==6
+gals_objc_i=traindata['TYPE_I']==3
+ps_objc_i =  traindata['TYPE_I']==6
+gals_objc_z=traindata['TYPE_Z']==3
+ps_objc_z =  traindata['TYPE_Z']==6
+gals_spec= traindata['SPEC_CLASS_ID']==0
+ps_spec = traindata['SPEC_CLASS_ID']>0
+
+gals_objc_r_MINE=mytype[2]==3
+ps_objc_r_MINE=mytype[2]==6
+#gals_objc_r_MINE=gals_objc_r_MINE[mask[2]]
+#ps_objc_r_MINE=ps_objc_r_MINE[mask[2]]
+
+colourR=psfmagsT[:,2]-(cmodelmagsT[:,2]-extT[:,2])
+plt.figure()
+plt.scatter(colourR[ps_objc_r_MINE[0:10000]][0:10000],psfmagsT[:,2][ps_objc_r_MINE[0:10000]][0:10000],color='blue',s=1)
+plt.scatter(colourR[gals_objc_r_MINE[0:10000]][0:10000],psfmagsT[:,2][gals_objc_r_MINE[0:10000]][0:10000],color='red',s=1)
+ps_patch = mpatches.Patch(color='blue', label='Point Sources')
+gals_patch = mpatches.Patch(color='red', label='Galaxies')
+plt.legend(handles=[gals_patch,ps_patch])
+plt.title(r'SDSS \texttt{frames} colour cut',fontsize=18)
+plt.legend()
+plt.axvline(x=0.145,linewidth=2,color='black')
+plt.ylabel(r'Psfmag\_r',fontsize=15)
+plt.xlabel(r'Psfmag\_r - Cmodelmag\_r',fontsize=15)
+plt.tight_layout()
+plt.ylim(10,25)
+plt.xlim(-1,4)
+plt.show()
+plt.savefig('FRAMES_R_BAND_CUT.eps', format='eps', dpi=1000)

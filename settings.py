@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 #[PROGRAM OPTIONS]
-programpath='/users/moricex/ML_RF/runresults/gridsearch/RF/'                                         # Root path to program 
+programpath='/users/moricex/ML_RF/'                                         # Root path to program 
 trainpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_train_wtype.fit'       # Input training data
 predpath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_predict_wtype.fit'      # Input prediction data
+datapath='/users/moricex/DR12photodata/specPhotoDR12v3_hoyleb_extcorr_BOTH_wtype.fit'       # Input training data
 filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 ,['PSFMAG_U','PSFMAG_G','PSFMAG_R','PSFMAG_I','PSFMAG_Z']\
 ,['FIBERMAG_U','FIBERMAG_G','FIBERMAG_R','FIBERMAG_I','FIBERMAG_Z']\
@@ -10,7 +11,7 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-onlyuse=['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
+onlyuse=[]#['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
 
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
@@ -42,15 +43,15 @@ compute_pearson=0
 
 # WARNING: MINT saves results to save computing time. This is hardcoded in run_opts.
 # WARNING: This means if your input catalogue/or targetted classes changes for any reason, these must be deleted and recalculated.
-calc_MINT = 0 # Does not work in OvsA
-MINT_n_feat=4
+calc_MINT = 1 # Does not work in OvsA
+MINT_n_feat=10
 
 compute_mifs=0 # Does not work in OvsA
 mifs_types=['JMI','JMIM','MRMR']
 mifs_n_feat=10 
 
-traindatanum=2500                                                           # Number of objects to train on
-predictdatanum=50000                                                        # Number of objects to predict
+traindatanum=10000                                                           # Number of objects to train on
+predictdatanum=1500000                                                        # Number of objects to predict
 weightinput=[]#[34,33,33]                                                   # Weights number of objects in each class. Value is percentage.
 cut_outliers=0
 
@@ -60,6 +61,8 @@ MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Wh
 MLAset = {'n_estimators': 256, 'n_jobs': 8}         # MLA settings
 #MLA = 'sklearn.ensemble.AdaBoostClassifier'
 #MLAset = {'n_estimators':1024,'learning_rate':1}
+#MLA = 'sklearn.ensemble.ExtraTreesClassifier'                             # Which MLA to load
+#MLAset = {'min_samples_leaf': 1, 'max_features': None, 'criterion': 'gini', 'bootstrap': True, 'n_estimators': 512, 'min_samples_split': 2, 'max_depth': None, 'n_jobs':-1}         # MLA settings
 actually_run=1                                                              # Actually run the MLA
 n_runs = 1     
                                                            
@@ -76,7 +79,7 @@ use_colours=[[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9],[0,1,2,3,4,5,6,7,8,9]]
 calculate_cross_colours=1
 
 # GRIDSEARCH
-gs_on = 1
+gs_on = 0
 param_grid = {"n_estimators": [64,128,256,512],
               "max_depth": [3,4,5,6,7,8,9,10,None],
               "max_features": [1, 3, 5],
