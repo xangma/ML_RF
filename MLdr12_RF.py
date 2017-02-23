@@ -6,6 +6,7 @@ Created on Thu Jun 16 18:00:54 2016
 """
 # Dependencies
 import os
+import sys
 import run_opts
 import settings
 import htmloutput
@@ -75,9 +76,10 @@ else:
     datadata=fits.open(settings.datapath)
     datadata=datadata[1].data # This is by far my favourite line
     catlen=len(datadata)
-    selected_obj=random.sample(range(catlen), traindatanum+predictdatanum)
-    traindata=datadata[selected_obj[0:traindatanum]]
-    preddata=datadata[selected_obj[traindatanum:traindatanum+predictdatanum]]
+    selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
+    traindata=datadata[selected_obj[0:100000]]
+    preddata=datadata[selected_obj[100000:]]
+    del datadata
 
 # Extra options before running
 traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find and exclude unclassified objects (subclass)
@@ -451,6 +453,10 @@ if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
 #        classnames_tr_one_vs_all[i]=classnames_tr_out
 #        classnames_pr_one_vs_all[i]=classnames_pr_out
 
+if (len(XX) != traindatanum) | (len(XXpredict) != predictdatanum):
+    logger.info('WARNING! The desired traindatanum and predictdatanum do not match the length of the catalogues after cutting! WARNING!')
+    sys.exit()
+
 def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n_run):
     logger.info('Starting MLA run')
     logger.info('------------')
@@ -558,7 +564,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         start, end=[],[]
         # Split cats for RAM management
         if settings.MLA == 'sklearn.ensemble.RandomForestClassifier':
-            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs)*10)
+            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
         else:
             numcats = numpy.int64(2*(XXpredict.size/1024/1024)*10)
         if settings.get_contributions ==1:

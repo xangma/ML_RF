@@ -11,7 +11,7 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-onlyuse=[]#['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
+onlyuse=['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
 
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
@@ -43,7 +43,7 @@ compute_pearson=0
 
 # WARNING: MINT saves results to save computing time. This is hardcoded in run_opts.
 # WARNING: This means if your input catalogue/or targetted classes changes for any reason, these must be deleted and recalculated.
-calc_MINT = 1 # Does not work in OvsA
+calc_MINT = 0 # Does not work in OvsA
 MINT_n_feat=10
 
 compute_mifs=0 # Does not work in OvsA
@@ -103,6 +103,7 @@ plot_decision_boundaries_MINT = 0                                               
 plot_decision_boundaries = 0
 plot_decision_boundaries_DT = 0
 plot_depth_acc = 0
+plot_oob_err_rate=1
 
 get_images=0
 html_on=0
