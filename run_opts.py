@@ -8,13 +8,20 @@ import settings
 import numpy
 import itertools as it
 import logging
+import os
 run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
-from minepy import MINE
+#from minepy import MINE
 from scipy.stats import pearsonr
+from sklearn.metrics import mutual_info_score
+from collections import defaultdict
+from sklearn.model_selection import GridSearchCV
+from time import time
+from sklearn.metrics import classification_report
 
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
-def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats):
+def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
         checkmagspos_log=logging.getLogger('checkmagspos')
@@ -25,8 +32,8 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
         for i in range(len(filtstats)): # For every filter
             n=bottom+filtstats[i][0]
             checkmagspos_log.info('Checking mags in XX: %s:%s' %(bottom, n))
-            negmagsXX = XX[:,bottom:n] < 0
-            negmagsXXpred = XXpredict[:,bottom:n] < 0
+            negmagsXX = XX[:,bottom:n] < 5
+            negmagsXXpred = XXpredict[:,bottom:n] < 5
             bottom=n+filtstats[i][1]
             negmagXXsum = numpy.sum(negmagsXX,axis=1)
             negmagXXpredsum = numpy.sum(negmagsXXpred,axis=1)
@@ -49,10 +56,17 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
             RA_tr,DEC_tr = RA_tr[XX_neg_index],DEC_tr[XX_neg_index]
             RA_pr,DEC_pr = RA_pr[XXpred_neg_index],DEC_pr[XXpred_neg_index]
             specz_tr,specz_pr = specz_tr[XX_neg_index],specz_pr[XXpred_neg_index]
-
-        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+            objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z\
+            = objc_type_tr[XX_neg_index],objc_type_tr_u[XX_neg_index],objc_type_tr_g[XX_neg_index],objc_type_tr_r[XX_neg_index],objc_type_tr_i[XX_neg_index],objc_type_tr_z[XX_neg_index]\
+            ,objc_type_pr[XXpred_neg_index],objc_type_pr_u[XXpred_neg_index],objc_type_pr_g[XXpred_neg_index],objc_type_pr_r[XXpred_neg_index],objc_type_pr_i[XXpred_neg_index],objc_type_pr_z[XXpred_neg_index]
+            dered_tr_r=dered_tr_r[XX_neg_index]
+            dered_pr_r=dered_pr_r[XXpred_neg_index]
+            
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
     else:
-        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
 
 def weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr): # Weights num of objects in training set by class, settings defined in settings.weightimput
     if len(settings.weightinput) > 0:
@@ -130,7 +144,10 @@ def calculate_colours(filt_train,filt_predict,n_filt,filt_names,j):
         for i in range(len(combs)):
             colours=filt_train[:,combs[i][0]]-filt_train[:,combs[i][1]]
             colours_all_train.append(colours)
-            col_names.append('%s - %s' %(settings.filters[j][combs[i][0]],settings.filters[j][combs[i][1]]))
+            if settings.calculate_cross_colours==0:
+                col_names.append('%s - %s' %(settings.filters[j][combs[i][0]],settings.filters[j][combs[i][1]]))
+            else:
+                col_names.append('%s - %s' %(settings.filters[combs[i][0]],settings.filters[combs[i][1]]))
         colours_all_predict=[]
         for i in range(len(combs)):
             colours=filt_predict[:,combs[i][0]]-filt_predict[:,combs[i][1]]
@@ -194,7 +211,13 @@ def diagnostics(x, state): # This is quite a 'free' function that is meant to ou
                 diagnostics_log.info('%4s %25s %10s %5s' %(unique_IDS_pr[i],uniquetarget_pr[0][i],uniquetarget_pr[2][i]\
                 ,round(((uniquetarget_pr[2][i]/prednum)*100),3)))
             diagnostics_log.info('------------') 
-
+            if settings.make_binary==1:
+                uniquetarget_tr[0][1]='PointS'
+                uniquetarget_tr=[uniquetarget_tr[0][0:2]]
+                unique_IDS_tr = unique_IDS_tr[0:2]
+                uniquetarget_pr[0][1]='PointS'
+                uniquetarget_pr=[uniquetarget_pr[0][0:2]]
+                unique_IDS_pr = unique_IDS_pr[0:2]
             return unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr
 
         if state == 'result': # At the end, provide the same type of class breakdown, but this time for results
@@ -233,3 +256,173 @@ def compute_pearson(XX):
             x=pearsonr(XX[:,combs[i][0]],XX[:,combs[i][1]])[0]
             pearson_all.append(x)
     return combs, pearson_all
+
+def calc_MI(x, y, bins=None):
+    if bins is None:
+        bins = int(numpy.sqrt(len(x)/5))# 25 # bins= sqrt(n/5) so have 5 points for every cell of hist
+    c_xy = numpy.histogram2d(x, y, bins)[0]
+    mi = mutual_info_score(None, None, contingency=c_xy)
+    return mi
+
+class MutualInformation:
+    """Determine MI using scikit-learn"""
+    def __init__(self, X, Y):
+        self.X, self.Y = X, Y
+    def mutual_information_2d(self, bins=None):
+        """normalised mutual information score alpha
+        http://scikit-learn.org/stable/modules/generated/sklearn.metrics.normalized_mutual_info_score.html
+        """
+        return calc_MI(self.X, self.Y, bins=bins) / numpy.sqrt(calc_MI(self.X, self.X, bins=bins) * calc_MI(self.Y, self.Y, bins=bins))
+
+def recursive_defaultdict():
+    return defaultdict(recursive_defaultdict)
+
+def setpath(d, p, k):
+    if len(p) == 1:
+        d[p[0]] = k
+    else:
+        setpath(d[p[0]], p[1:], k)
+
+def calc_MINT(XX,XXpredict,yy): # ALSO CALCULATES MI AND SAVES THEM. MI_XX can use train+predict, MI_YY can only use train.
+    MI_XX = {'correlation_results':{}}
+    MI_XY = {'correlation_results':{}}
+    trainpred=[]
+    combsXX,combsXY = [],[]
+    res={}
+    S = settings.MINT_n_feat
+    trainnum=settings.traindatanum
+    dirlist=os.listdir('/users/moricex/ML_RF/MINT_res')
+    MINT_res_name='MINT_res_ntrain_%s_nMINT_%s.npy' %(trainnum,S)
+    if settings.calc_MINT == 1:
+        if MINT_res_name not in dirlist:
+            trainpred = numpy.row_stack((XX,XXpredict))
+            combsXX =  combsXX= list(it.product(list(range(len(XX[0][:-1]))),list(range(len((XX[0][:-1]))))))
+            combsXY = list(it.product(list(range(len(XX[0][:-1]))),numpy.int64(list(numpy.unique(yy)))))
+            MI_XX['columns'] = list(range(len(XX[0][:-1])))
+            MI_XX['columns2'] = list(range(len(XX[0][:-1])))
+            MI_XY['columns'] = numpy.int64(list(numpy.unique(yy)))
+            MI_XY['columns2'] = list(range(len(XX[0][:-1])))
+            
+            # SET UP DICT
+            for i in range(len(combsXX)):
+                MI_XX['correlation_results'][combsXX[i][0]] = {}
+                for j in range(len(combsXX)):
+                    MI_XX['correlation_results'][combsXX[i][0]][combsXX[j][1]] = {}
+            # CALC
+            for i in range(len(combsXX)):
+                XX_mi = MutualInformation(trainpred.T[combsXX[i][0]],trainpred.T[combsXX[i][1]]).mutual_information_2d()
+                MI_XX['correlation_results'][combsXX[i][0]][combsXX[i][1]]['MI'] = XX_mi
+            
+            # SET UP DICT
+            for i in range(len(combsXY)):
+                MI_XY['correlation_results'] = {}
+                for j in range(len(combsXY)):
+                    MI_XY['correlation_results'][combsXY[j][0]] = {}
+            # CALC
+            for i in range(len(combsXY)):
+                XY_mi = MutualInformation(XX.T[combsXY[i][0]],yy).mutual_information_2d()
+                MI_XY['correlation_results'][combsXY[i][0]]['MI'] = XY_mi
+            
+            #MINT START
+            xfeats_ = numpy.array(MI_XY['columns2']) # This would be [0:49]
+            xfeats_ = [i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])] # I'm thinking ['columns'] and ['columns2'] would be [0:49] for me
+            
+            res = {}
+    #        for yfeat in MI_XY['columns']: # And this would be [0:2]. So for each class ...
+                
+            print('before', len(xfeats_))
+            xfeats = numpy.array([i for i in xfeats_ if (i in MI_XX['columns']) and (i in MI_XX['columns2'])]) # only find ones you want to compare
+            
+            print('after', len(xfeats_))
+            MIXY = numpy.array([MI_XY['correlation_results'][j]['MI'] for j in xfeats]) # Select MIXY for particular class 
+            indF = numpy.isfinite(MIXY) == True # Check if finite
+            MIXY = MIXY[indF] # Apply finite cut
+            xfeats = xfeats[indF] # Apply to xfeats array too
+            inds_ = numpy.argsort(MIXY)[::-1] # Return indicies that would sort array then flip reverse it
+            sort_MIXY = MIXY[inds_] # Sort the MIXY array to most important feature first? Though it's never used ...
+            sort_xfeats = xfeats[inds_] # Sort the xfeats array
+            global_Phi = -100
+            
+            for feature1 in xfeats: # Starting with the top feature (one that is most strongly correlated with class in question) ...
+                feature_x = [feature1] # Index of feature/s in question
+                    
+                for S_ in numpy.arange(S - 1) + 2: # for selected features 2 to S (in the def case, that's 10) | Now S_ is 3, and feature_x has 2 features in it
+                    
+                    feats =  [f1 for f1 in xfeats if f1 not in feature_x] # select all features but one/s in question (feature_x) |
+                    Phi_best = -100
+                    for feat2 in feats: # For every element in the array without the feature/s in question |
+                        all_feats = feature_x + [feat2] # all_feats array contains the index of the feature/s in question and the index of the rest
+                        Phi = 1.0 / S_ * numpy.sum([MI_XY['correlation_results'][j]['MI'] for j in all_feats]) - 1.0 / (S_ * S_) * (numpy.sum([MI_XX['correlation_results'][j][k]['MI'] for j in all_feats for k in all_feats]))
+             # Calculate Phi = 1 / num_feats_in_question * sum(MIXY[class][...])...
+                        if Phi > Phi_best:
+                            Phi_best = Phi
+                            best_new_feat = feat2 # If it finds a good feature ...|
+        
+                    feature_x.append(best_new_feat) # Add it to the list of features in question | Now go to next iteration of S_ on line 81 || Once S_ gets to 10 ...
+                if Phi_best > global_Phi: # | If this beats feature 0, this set of features is best, switch to this one.
+                    global_Phi = Phi_best
+                    global_feats = feature_x
+                    print('global_Phi phi', global_Phi)
+                    print(global_feats)
+        
+            res = {'best_phi': global_Phi, 'best_feats': global_feats}
+            numpy.save('/users/moricex/ML_RF/MINT_res/'+MINT_res_name,res)
+        else:
+            loaded=numpy.load('/users/moricex/ML_RF/MINT_res/'+MINT_res_name)
+            res=loaded.tolist()
+    return res
+
+def gridsearch(XX,XXpredict,yy,yypredict,clf):
+#    tuned_parameters=settings.param_grid
+    param_grid=settings.param_grid  
+    print("Gridsearch start")
+    def report(results, n_top=3):
+        for i in range(1, n_top + 1):
+            candidates = numpy.flatnonzero(results['rank_test_score'] == i)
+            for candidate in candidates:
+                print("Model with rank: {0}".format(i))
+                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(results['mean_test_score'][candidate],results['std_test_score'][candidate]))
+                print("Parameters: {0}".format(results['params'][candidate]))
+                print("")
+    grid_search = GridSearchCV(clf, param_grid=param_grid,cv=10,n_jobs=14,verbose=1)
+    start = time()
+    grid_search.fit(XX, yy)
+
+    print("GridSearchCV took %.2f seconds for %d candidate parameter settings."% (time() - start, len(grid_search.cv_results_['params'])))
+    report(grid_search.cv_results_)
+    return grid_search
+#    X_train, X_test, y_train, y_test = XX,XXpredict,yy,yypredict
+#    
+#    # Set the parameters by cross-validation
+#
+#    scores = ['precision', 'recall']
+#    
+#    for score in scores:
+#        print("# Tuning hyper-parameters for %s" % score)
+#        print()
+#    
+#        clf = GridSearchCV(clf, tuned_parameters, cv=5,
+#                           scoring='%s_macro' % score)
+#        clf.fit(X_train, y_train)
+#    
+#        print("Best parameters set found on development set:")
+#        print()
+#        print(clf.best_params_)
+#        print()
+#        print("Grid scores on development set:")
+#        print()
+#        means = clf.cv_results_['mean_test_score']
+#        stds = clf.cv_results_['std_test_score']
+#        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+#            print("%0.3f (+/-%0.03f) for %r"
+#                  % (mean, std * 2, params))
+#        print()
+#    
+#        print("Detailed classification report:")
+#        print()
+#        print("The model is trained on the full development set.")
+#        print("The scores are computed on the full evaluation set.")
+#        print()
+#        y_true, y_pred = y_test, clf.predict(X_test)
+#        print(classification_report(y_true, y_pred))
+#        print()
