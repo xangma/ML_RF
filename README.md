@@ -19,6 +19,9 @@ These are optional functions that the main code dips out to. Most can be enabled
 ####settings.py
 Contains all settings for program. Is quite particular so be careful. Can swap out filters/colours as needed.
 
+July 2017
+- Biiiig changes. Code now uses a randomly drawn catalogue with constant seed. Calculates the frames pipeline classification results for comparison. A bunch of new plot functionality. The gridsearch function to tune ML algorithms. More I can't remember.
+
 Week of 25/7/16
 - Bugfixes
 - Plots! Added 2d histograms of class precision vs colour vs radius
