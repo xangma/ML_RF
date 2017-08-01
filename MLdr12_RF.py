@@ -6,6 +6,7 @@ Created on Thu Jun 16 18:00:54 2016
 """
 # Dependencies
 import os
+import sys
 import run_opts
 import settings
 import htmloutput
@@ -15,11 +16,13 @@ import time
 import plots
 import logging
 import treeinterpreter as ti
+import random
 from sklearn import metrics
 from sklearn import tree
+from sklearn import covariance
 import mifs
 
-
+image_IDs = {}
 temp_train='./temp_train.csv' # Define temp files for pyspark
 temp_pred='./temp_pred.csv'
 
@@ -66,13 +69,25 @@ if 'traindata' in locals(): # Check if data is loaded, else load it (Might remov
     logger.info('Data already loaded, skipping')
     logger.info('------------')
 else:
-    traindata=fits.open(settings.trainpath)
-    traindata=traindata[1].data
-    preddata=fits.open(settings.predpath)
-    preddata=preddata[1].data
+#    traindata=fits.open(settings.trainpath)
+#    traindata=traindata[1].data
+#    preddata=fits.open(settings.predpath)
+#    preddata=preddata[1].data
+    datadata=fits.open(settings.datapath)
+    datadata=datadata[1].data # This is by far my favourite line
+    catlen=len(datadata)
+    random.seed=(2000)
+    selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
+    traindata=datadata[selected_obj[0:100000]]
+    preddata=datadata[selected_obj[100000:]]
+    del datadata
 
 # Extra options before running
 traindata, preddata = run_opts.find_only_classified(traindata,preddata) # Find and exclude unclassified objects (subclass)
+
+# Cut all unclean photometry
+traindata=traindata[traindata['clean']==1]
+preddata=preddata[preddata['clean']==1]
 
 filt_train_all= {} # Set up arrays
 filt_predict_all = {}
@@ -81,45 +96,76 @@ col_names={}
 combs={}
 feat_names=[]
 
-for j in range(len(settings.filters)): # For each filter set
-    n_filt=len(settings.filters[j]) # Get the number of filters
+if settings.calculate_cross_colours==1:
+    totarr=[]
+    for j in range(len(settings.filters)):
+        for i in range(len(settings.filters[j])):
+            totarr.append(settings.filters[j][i])
+    settings.filters=totarr
+
+if settings.calculate_cross_colours==0:
+    for j in range(len(settings.filters)): # For each filter set
+        n_filt=len(settings.filters[j]) # Get the number of filters
+        filt_train=[] # Set up filter array
+        for i in range(len(settings.filters[j])): # For each filter i in filter set j 
+            filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
+        filt_names[j]= settings.filters[j]
+        filt_train=numpy.transpose(filt_train)
+        #    filt_names=numpy.transpose(filt_names)
+        filt_predict=[]
+        for i in range(len(settings.filters[j])): # Do same for prediction set
+            filt_predict.append(preddata[settings.filters[j][i]])
+        filt_predict=numpy.transpose(filt_predict)
+        
+        filt_train,filt_predict,combs[j],filt_names,col_names_j = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,j) # Section that calculates all possible colours
+        if settings.calculate_cross_colours==0:
+            filt_train,filt_predict,n_colour,col_names_j = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j) # Section that checks use_colours and cuts colours accordingly
+        col_names[j]=col_names_j
+        
+        filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
+        filt_predict_all[j]=filt_predict,n_filt,n_colour
+else:
+    n_filt=len(settings.filters) # Get the number of filters
     filt_train=[] # Set up filter array
-    for i in range(numpy.size(settings.filters[j])): # For each filter i in filter set j 
-        filt_train.append(traindata[settings.filters[j][i]]) # Append filter to filter array
-    filt_names[j]= settings.filters[j]
+    for i in range(len(settings.filters)): # For each filter i in filter set j 
+        filt_train.append(traindata[settings.filters[i]]) # Append filter to filter array
+    filt_names= settings.filters
     filt_train=numpy.transpose(filt_train)
-#    filt_names=numpy.transpose(filt_names)
+    #    filt_names=numpy.transpose(filt_names)
     filt_predict=[]
-    for i in range(numpy.size(settings.filters[j])): # Do same for prediction set
-        filt_predict.append(preddata[settings.filters[j][i]])
+    for i in range(len(settings.filters)): # Do same for prediction set
+        filt_predict.append(preddata[settings.filters[i]])
     filt_predict=numpy.transpose(filt_predict)
     
-    filt_train,filt_predict,combs[j],filt_names,col_names_j = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,j) # Section that calculates all possible colours
-    
-    filt_train,filt_predict,n_colour,col_names_j = run_opts.use_filt_colours(filt_train,filt_predict,j,n_filt,col_names_j) # Section that checks use_colours and cuts colours accordingly
-    col_names[j]=col_names_j
-    
-    filt_train_all[j]=filt_train,n_filt,n_colour # Create list of filter sets, with the num of filts and colours
-    filt_predict_all[j]=filt_predict,n_filt,n_colour
-
-n_filt=0
-n_colours=0
+    filt_train,filt_predict,combs[0],filt_names,col_names = run_opts.calculate_colours(filt_train,filt_predict,n_filt,filt_names,0) # Section that calculates all possible colours
+    col_names=col_names
+    n_colours=len(col_names)
+    filt_train_all[0]=filt_train,n_filt,n_colours # Create list of filter sets, with the num of filts and colours
+    filt_predict_all[0]=filt_predict,n_filt,n_colours
 filtstats={}
-for i in range(len(filt_train_all)):
-    filtstats[i]=filt_train_all[i][1],filt_train_all[i][2] # Make filtstats var with n_filt and n_colours to be passed to runopts.checkmagspos
-    n_filt=n_filt+filt_train_all[i][1]# Number of filters
-    n_colours=n_colours+filt_train_all[i][2] # Number of colours
+if settings.calculate_cross_colours == 0:
+    n_filt=0
+    n_colours=0
+    for i in range(len(filt_train_all)):
+        filtstats[i]=filt_train_all[i][1],filt_train_all[i][2] # Make filtstats var with n_filt and n_colours to be passed to runopts.checkmagspos
+        n_filt=n_filt+filt_train_all[i][1]# Number of filters
+        n_colours=n_colours+filt_train_all[i][2] # Number of colours
+
 n_oth=len(settings.othertrain) # Number of other features
 n_feat=n_filt+n_colours+n_oth # Number of total features
 logger.info('Number of filters: %s, Number of colours: %s, Number of other features: %s' %(n_filt,n_colours,n_oth))
 logger.info('Number of total features = %s + 1 target' %(n_feat))
 
-for j in range(len(settings.filters)):
-    feat_names = feat_names+filt_names[j]+col_names[j]
+if settings.calculate_cross_colours==0:
+    for j in range(len(settings.filters)):
+        feat_names = feat_names+filt_names[j]+col_names[j]
+else:
+    feat_names = feat_names+filt_names+col_names
 feat_names = feat_names+settings.othertrain
+
 # Stack arrays to feed to MLA
 XX=numpy.array(filt_train_all[0][0])
-if len(filt_train_all) >= 1:
+if len(filt_train_all[0]) >= 1:
     for i in range(1,len(filt_train_all)):
         XX=numpy.column_stack((XX,numpy.array(filt_train_all[i][0])))
 for i in range(len(settings.othertrain)): # Tack on other training features (not mags, like redshift)
@@ -129,11 +175,28 @@ for i in range(len(settings.othertrain)): # Tack on other training features (not
 classnames_tr=traindata[settings.predict[:-3]] # Get classnames
 subclass_tr=traindata['SPEC_SUBCLASS_ID']
 subclass_names_tr=traindata['SPEC_SUBCLASS']
-OBJID_tr = traindata['OBJID']
+OBJID_tr = traindata['OBJID_1']
 RA_tr,DEC_tr = traindata['RA'],traindata['DEC']
 specz_tr = traindata['SPECZ']
+objc_type_tr = traindata['type']
+objc_type_tr_u = traindata['type_u']
+objc_type_tr_g = traindata['type_g']
+objc_type_tr_r = traindata['type_r']
+objc_type_tr_i = traindata['type_i']
+objc_type_tr_z = traindata['type_z']
+dered_tr_r = traindata['dered_r']
+clean_tr = traindata['clean']
 
-XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
+if settings.make_binary == 0:
+    XX=numpy.column_stack((XX,traindata[settings.predict])) # Stack training data for MLA, tack on true answers
+# Binary function here
+else:
+    stars_train = traindata[settings.predict] == 2
+    QSO_train = traindata[settings.predict] == 1
+    PS_indexes = stars_train+QSO_train
+    bin_yy=traindata[settings.predict]
+    bin_yy[PS_indexes] = 1
+    XX=numpy.column_stack((XX,bin_yy))
 
 # Do the same for predict data
 XXpredict=numpy.array(filt_predict_all[0][0])
@@ -145,17 +208,75 @@ for i in range(len(settings.othertrain)): # Tack on other prediction features (n
 classnames_pr=preddata[settings.predict[:-3]]
 subclass_pr = preddata['SPEC_SUBCLASS_ID']
 subclass_names_pr = preddata['SPEC_SUBCLASS']
-OBJID_pr = preddata['OBJID']
-SPECOBJID_pr = preddata['SPECOBJID']
+OBJID_pr = preddata['OBJID_1']
+SPECOBJID_pr = preddata['SPECOBJID_1']
 RA_pr,DEC_pr = preddata['RA'],preddata['DEC']
 specz_pr = preddata['SPECZ']
+objc_type_pr = preddata['type']
+objc_type_pr_u = preddata['type_u']
+objc_type_pr_g = preddata['type_g']
+objc_type_pr_r = preddata['type_r']
+objc_type_pr_i = preddata['type_i']
+objc_type_pr_z = preddata['type_z']
+dered_pr_r= preddata['dered_r']
+clean_pr = preddata['clean']
 
-XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
+if settings.make_binary == 0:
+    XXpredict=numpy.column_stack((XXpredict,preddata[settings.predict])) # Stack training data for MLA, tack on true answers so can evaluate after
+# Binary function here
+else:
+    stars_pred = preddata[settings.predict] == 2
+    QSO_pred = preddata[settings.predict] == 1
+    PS_indexes_p = stars_pred+QSO_pred
+    bin_yy_p=preddata[settings.predict]
+    bin_yy_p[PS_indexes_p] = 1
+    XXpredict=numpy.column_stack((XXpredict,bin_yy_p))
 
+if settings.objc_type_cuts==1:
+    logging.info('Cutting as per objc_type calc')
+    objc_res_train=numpy.load('/users/moricex/ML_RF/mytype_res_train2.npy')
+    objc_res_predict=numpy.load('/users/moricex/ML_RF/mytype_res_predict2.npy')
+    logging.info('Before len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
+    XX=XX[objc_res_train[1].astype(bool)]
+    XXpredict=XXpredict[objc_res_predict[1].astype(bool)]
+    specz_tr=specz_tr[objc_res_train[1].astype(bool)]
+    specz_pr=specz_pr[objc_res_predict[1].astype(bool)]
+    classnames_tr=classnames_tr[objc_res_train[1].astype(bool)]
+    classnames_pr=classnames_pr[objc_res_predict[1].astype(bool)]
+    subclass_tr=subclass_tr[objc_res_train[1].astype(bool)]
+    subclass_names_tr=subclass_names_tr[objc_res_train[1].astype(bool)]
+    subclass_pr=subclass_pr[objc_res_predict[1].astype(bool)]
+    subclass_names_pr=subclass_names_pr[objc_res_predict[1].astype(bool)]
+    OBJID_tr=OBJID_tr[objc_res_train[1].astype(bool)]
+    OBJID_pr=OBJID_pr[objc_res_predict[1].astype(bool)]
+    SPECOBJID_pr=SPECOBJID_pr[objc_res_predict[1].astype(bool)]
+    RA_tr=RA_tr[objc_res_train[1].astype(bool)]
+    DEC_tr=DEC_tr[objc_res_train[1].astype(bool)]
+    RA_pr=RA_pr[objc_res_predict[1].astype(bool)]
+    DEC_pr=DEC_pr[objc_res_predict[1].astype(bool)]
+    objc_type_tr=objc_type_tr[objc_res_train[1].astype(bool)]
+    objc_type_tr_u=objc_type_tr_u[objc_res_train[1].astype(bool)]
+    objc_type_tr_g=objc_type_tr_g[objc_res_train[1].astype(bool)]
+    objc_type_tr_r=objc_type_tr_r[objc_res_train[1].astype(bool)]
+    objc_type_tr_i=objc_type_tr_i[objc_res_train[1].astype(bool)]
+    objc_type_tr_z=objc_type_tr_z[objc_res_train[1].astype(bool)]
+    objc_type_pr=objc_type_pr[objc_res_predict[1].astype(bool)]
+    objc_type_pr_u=objc_type_pr_u[objc_res_predict[1].astype(bool)]
+    objc_type_pr_g=objc_type_pr_g[objc_res_predict[1].astype(bool)]
+    objc_type_pr_r=objc_type_pr_r[objc_res_predict[1].astype(bool)]
+    objc_type_pr_i=objc_type_pr_i[objc_res_predict[1].astype(bool)]
+    objc_type_pr_z=objc_type_pr_z[objc_res_predict[1].astype(bool)]
+    dered_tr_r=dered_tr_r[objc_res_train[1].astype(bool)]
+    dered_pr_r=dered_pr_r[objc_res_predict[1].astype(bool)]
+
+    logging.info('After len:%s (train) and %s (predict)'%(len(XX),len(XXpredict)))
+    
 # Filter out negative magnitudes
 # THIS MUST BE DONE LAST IN THIS PROCESSING PART.
 XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
- = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats)
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r\
+ = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r)
 
 XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
@@ -169,14 +290,19 @@ SPECOBJID_pr = SPECOBJID_pr[0:predictdatanum]
 RA_tr,DEC_tr = RA_tr[0:traindatanum],DEC_tr[0:traindatanum]
 RA_pr,DEC_pr = RA_pr[0:predictdatanum],DEC_pr[0:predictdatanum]
 specz_tr,specz_pr = specz_tr[0:traindatanum],specz_pr[0:predictdatanum]
-
+objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z=\
+objc_type_tr[0:traindatanum],objc_type_tr_u[0:traindatanum],objc_type_tr_g[0:traindatanum],objc_type_tr_r[0:traindatanum],objc_type_tr_i[0:traindatanum],objc_type_tr_z[0:traindatanum]
+objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z=\
+objc_type_pr[0:predictdatanum],objc_type_pr_u[0:predictdatanum],objc_type_pr_g[0:predictdatanum],objc_type_pr_r[0:predictdatanum],objc_type_pr_i[0:predictdatanum],objc_type_pr_z[0:predictdatanum]
+dered_pr_r=dered_pr_r[0:predictdatanum]
+dered_tr_r=dered_tr_r[0:traindatanum]
 # Cuts for doublesubrun
 subclass_tr = subclass_tr[0:traindatanum]
 subclass_names_tr = subclass_names_tr[0:traindatanum]
 subclass_pr = subclass_pr[0:predictdatanum]
 subclass_names_pr = subclass_names_pr[0:predictdatanum]
 
-del traindata,preddata,filt_train,filt_predict,filt_train_all,filt_predict_all # Clean up
+del traindata,preddata,filt_train,filt_predict,filt_predict_all # Clean up
 
 unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
 run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
@@ -184,11 +310,131 @@ run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inp
 yy = XX[:,-1] # Training answers
 yypredict = XXpredict[:,-1] # Prediction answers
 
-if settings.compute_mifs==1:
-    # define MI_FS feature selection method
-    feat_selector = mifs.MutualInformationFeatureSelector(n_features=n_feat,method='MRMR')
-    feat_selector.fit(XX[:,:-1], numpy.int64(yy))
-    
+if settings.cut_outliers==1:
+    logger.info('Cutting outliers. Objects before: %s' %len(XX))
+    clf_train=covariance.EllipticEnvelope()
+    clf_train.fit(XX)
+    train_inlier=clf_train.predict(XX)
+    XX=XX[train_inlier==1]
+    yy=yy[train_inlier==1]
+    logger.info('Objects after: %s'%len(XX))
+    traindatanum=len(XX)
+
+unique_IDS_tr, unique_IDS_pr,uniquetarget_tr,uniquetarget_pr = \
+run_opts.diagnostics([XX[:,-1],XXpredict[:,-1],classnames_tr,classnames_pr],'inputdata') # Total breakdown of types going in
+
+#OBJC COMPARISONS
+gals_spec_tr=yy==0
+ps_spec_tr=yy>0
+gals_spec_pr=yypredict==0
+ps_spec_pr=yypredict>0
+#TRAINING
+gals_objc_tr=objc_type_tr==3
+ps_objc_tr = objc_type_tr==6
+gals_objc_tr_u=objc_type_tr_u==3
+ps_objc_tr_u = objc_type_tr_u==6
+gals_objc_tr_g=objc_type_tr_g==3
+ps_objc_tr_g = objc_type_tr_g==6
+gals_objc_tr_r=objc_type_tr_r==3 
+ps_objc_tr_r = objc_type_tr_r==6
+gals_objc_tr_i=objc_type_tr_i==3
+ps_objc_tr_i = objc_type_tr_i==6
+gals_objc_tr_z=objc_type_tr_z==3
+ps_objc_tr_z = objc_type_tr_z==6
+gals_corr_tr=(sum(gals_objc_tr[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr=(sum(ps_objc_tr[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr=(sum(gals_objc_tr[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_u=(sum(gals_objc_tr_u[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_u=(sum(ps_objc_tr_u[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_u=(sum(gals_objc_tr_u[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_u[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_g=(sum(gals_objc_tr_g[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_g=(sum(ps_objc_tr_g[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_g=(sum(gals_objc_tr_g[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_g[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_r=(sum(gals_objc_tr_r[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_r=(sum(ps_objc_tr_r[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_r=(sum(gals_objc_tr_r[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_r[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_i=(sum(gals_objc_tr_i[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_i=(sum(ps_objc_tr_i[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_i=(sum(gals_objc_tr_i[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_i[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+gals_corr_tr_z=(sum(gals_objc_tr_z[gals_spec_tr]==gals_spec_tr[gals_spec_tr])/sum(gals_spec_tr))
+ps_corr_tr_z=(sum(ps_objc_tr_z[ps_spec_tr]==ps_spec_tr[ps_spec_tr])/sum(ps_spec_tr))
+tot_corr_tr_z=(sum(gals_objc_tr_z[gals_spec_tr]==gals_spec_tr[gals_spec_tr])+sum(ps_objc_tr_z[ps_spec_tr]==ps_spec_tr[ps_spec_tr]))/traindatanum
+
+logger.info('OBJC_TYPE CUT RESULTS(training):')
+logger.info('ALL BANDS: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr,ps_corr_tr,tot_corr_tr))
+logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u))
+logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g))
+logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r))
+logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i))
+logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z))
+
+gals_objc_pr=objc_type_pr==3
+ps_objc_pr = objc_type_pr==6
+gals_objc_pr_u=objc_type_pr_u==3
+ps_objc_pr_u = objc_type_pr_u==6
+gals_objc_pr_g=objc_type_pr_g==3
+ps_objc_pr_g = objc_type_pr_g==6
+gals_objc_pr_r=objc_type_pr_r==3 
+ps_objc_pr_r = objc_type_pr_r==6
+gals_objc_pr_i=objc_type_pr_i==3
+ps_objc_pr_i = objc_type_pr_i==6
+gals_objc_pr_z=objc_type_pr_z==3
+ps_objc_pr_z = objc_type_pr_z==6
+gals_corr_pr=(sum(gals_objc_pr[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr=(sum(ps_objc_pr[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr=(sum(gals_objc_pr[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_u=(sum(gals_objc_pr_u[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_u=(sum(ps_objc_pr_u[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_u=(sum(gals_objc_pr_u[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_u[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_g=(sum(gals_objc_pr_g[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_g=(sum(ps_objc_pr_g[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_g=(sum(gals_objc_pr_g[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_g[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_r=(sum(gals_objc_pr_r[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_r=(sum(ps_objc_pr_r[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_r=(sum(gals_objc_pr_r[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_r[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_i=(sum(gals_objc_pr_i[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_i=(sum(ps_objc_pr_i[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_i=(sum(gals_objc_pr_i[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_i[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+gals_corr_pr_z=(sum(gals_objc_pr_z[gals_spec_pr]==gals_spec_pr[gals_spec_pr])/sum(gals_spec_pr))
+ps_corr_pr_z=(sum(ps_objc_pr_z[ps_spec_pr]==ps_spec_pr[ps_spec_pr])/sum(ps_spec_pr))
+tot_corr_pr_z=(sum(gals_objc_pr_z[gals_spec_pr]==gals_spec_pr[gals_spec_pr])+sum(ps_objc_pr_z[ps_spec_pr]==ps_spec_pr[ps_spec_pr]))/predictdatanum
+
+logger.info('OBJC_TYPE CUT RESULTS(predict):')
+logger.info('ALL BANDS: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr,ps_corr_pr,tot_corr_pr))
+logger.info('U_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u))
+logger.info('G_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_g,ps_corr_pr_g,tot_corr_pr_g))
+logger.info('R_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_r,ps_corr_pr_r,tot_corr_pr_r))
+logger.info('I_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i))
+logger.info('Z_BAND: Gals correct: %s, PS correct: %s, All correct: %s'%(gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z))
+
+objc_type_pr[gals_objc_pr]=0
+objc_type_pr[ps_objc_pr]=1
+objc_type_pr_u[gals_objc_pr_u]=0
+objc_type_pr_u[ps_objc_pr_u]=1
+objc_type_pr_g[gals_objc_pr_g]=0
+objc_type_pr_g[ps_objc_pr_g]=1
+objc_type_pr_r[gals_objc_pr_r]=0
+objc_type_pr_r[ps_objc_pr_r]=1
+objc_type_pr_i[gals_objc_pr_i]=0
+objc_type_pr_i[ps_objc_pr_i]=1
+objc_type_pr_z[gals_objc_pr_z]=0
+objc_type_pr_z[ps_objc_pr_z]=1
+
+logger.info('SKLEARN METRICS ON PREDICT SET')
+logger.info('ALL: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr),metrics.precision_score(yypredict,objc_type_pr,average=None),metrics.recall_score(yypredict,objc_type_pr,average=None),metrics.f1_score(yypredict,objc_type_pr,average=None)))
+logger.info('U: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_u),metrics.precision_score(yypredict,objc_type_pr_u,average=None),metrics.recall_score(yypredict,objc_type_pr_u,average=None),metrics.f1_score(yypredict,objc_type_pr_u,average=None)))
+logger.info('G: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_g),metrics.precision_score(yypredict,objc_type_pr_g,average=None),metrics.recall_score(yypredict,objc_type_pr_g,average=None),metrics.f1_score(yypredict,objc_type_pr_g,average=None)))
+logger.info('R: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_r),metrics.precision_score(yypredict,objc_type_pr_r,average=None),metrics.recall_score(yypredict,objc_type_pr_r,average=None),metrics.f1_score(yypredict,objc_type_pr_r,average=None)))
+logger.info('I: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_i),metrics.precision_score(yypredict,objc_type_pr_i,average=None),metrics.recall_score(yypredict,objc_type_pr_i,average=None),metrics.f1_score(yypredict,objc_type_pr_i,average=None)))
+logger.info('Z: Accuracy: %s, Precision: %s, Recall: %s, F1Score: %s'%(metrics.accuracy_score(yypredict,objc_type_pr_z),metrics.precision_score(yypredict,objc_type_pr_z,average=None),metrics.recall_score(yypredict,objc_type_pr_z,average=None),metrics.f1_score(yypredict,objc_type_pr_z,average=None)))
+
+
+objc_results={'training':{'ALL':[gals_corr_tr,ps_corr_tr,tot_corr_tr],'U':[gals_corr_tr_u,ps_corr_tr_u,tot_corr_tr_u]\
+,'G':[gals_corr_tr_g,ps_corr_tr_g,tot_corr_tr_g],'R':[gals_corr_tr_r,ps_corr_tr_r,tot_corr_tr_r],'I':[gals_corr_tr_i,ps_corr_tr_i,tot_corr_tr_i]\
+,'Z':[gals_corr_tr_z,ps_corr_tr_z,tot_corr_tr_z]},'predict':{'ALL':[gals_corr_pr,ps_corr_pr,tot_corr_pr],'U':[gals_corr_pr_u,ps_corr_pr_u,tot_corr_pr_u]\
+,'G':[gals_corr_pr_g,ps_corr_pr_g,tot_corr_pr_g],'R':[gals_corr_pr_r,ps_corr_pr_r,tot_corr_pr_r],'I':[gals_corr_pr_i,ps_corr_pr_i,tot_corr_pr_i]\
+,'Z':[gals_corr_pr_z,ps_corr_pr_z,tot_corr_pr_z]}}
+
 if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
     XX_one_vs_all,XXpredict_one_vs_all,yy_one_vs_all,yypredict_one_vs_all = {},{},{},{}
     for i in range(len(unique_IDS_tr)):
@@ -208,6 +454,10 @@ if settings.one_vs_all == 1: # target is unique_IDs_tr[i] in loop
         yypredict_one_vs_all[i] = yypredict_out
 #        classnames_tr_one_vs_all[i]=classnames_tr_out
 #        classnames_pr_one_vs_all[i]=classnames_pr_out
+
+if (len(XX) != traindatanum) | (len(XXpredict) != predictdatanum):
+    logger.info('WARNING! The desired traindatanum and predictdatanum do not match the length of the catalogues after cutting! WARNING!')
+    sys.exit()
 
 def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n_run):
     logger.info('Starting MLA run')
@@ -308,14 +558,17 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                     os.system('dot -Tpng plots/tree_%s.dot -o plots/tree_%s.png' %(i_tree,i_tree))
                     os.remove('plots/tree_%s.dot' %i_tree)
                     i_tree = i_tree + 1        
-            else:
+            elif settings.output_ex_tree == 1:
                 with open('plots/tree_example.dot', 'w') as my_file:
                     my_file = tree.export_graphviz(clf.estimators_[0], out_file = my_file,feature_names=feat_names,class_names=uniquetarget_tr[0], filled=True)
                 os.system('dot -Tpng plots/tree_example.dot -o plots/tree_example.png')
                 os.remove('plots/tree_example.dot')
         start, end=[],[]
         # Split cats for RAM management
-        numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
+        if settings.MLA == 'sklearn.ensemble.RandomForestClassifier':
+            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
+        else:
+            numcats = numpy.int64(2*(XXpredict.size/1024/1024)*10)
         if settings.get_contributions ==1:
             numcats=100
         if numcats < 1:
@@ -351,10 +604,10 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
                 train_contributions=tiresult_train[2]
                 bias_train = tiresult_train[1][0]
         
-        accuracy = metrics.accuracy_score(result,yypredict)
-        recall = metrics.recall_score(result,yypredict,average=None)
-        precision = metrics.precision_score(result,yypredict,average=None)
-        score = metrics.f1_score(result, yypredict,average=None)
+        accuracy = metrics.accuracy_score(yypredict,result)
+        recall = metrics.recall_score(yypredict,result,average=None)
+        precision = metrics.precision_score(yypredict,result,average=None)
+        score = metrics.f1_score(yypredict,result,average=None)
         
         end = time.time()
         logger.info('Predict ended in %s seconds' %(end-start))
@@ -373,12 +626,12 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
     if settings.saveresults == 1:
         logger.info('Saving results')
         logger.info('------------')
-
         numpy.savetxt(settings.result_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
         numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
-        numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,percentage,clf.max_depth)),header="n_est traindatanum predictdatanum percentage max_depth",fmt="%s")
-    
+        numpy.save(settings.featnames_outfile+('_%s' %ind_run_name),feat_names)
+        #numpy.savetxt(settings.stats_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((clf.n_estimators,traindatanum,predictdatanum,accuracy,clf.max_depth)),header="n_est traindatanum predictdatanum accuracy max_depth",fmt="%s")
+        numpy.savetxt(settings.scores_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((recall,precision,[accuracy,0],score)),header="recall precision accuracy score")
     return result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions
 
 mic_runs,pearson_runs,mic_contributions_runs=[],[],[]
@@ -387,6 +640,16 @@ results_dict=[]
 
 for n in range(0,settings.n_runs):
     logging.info('%s/%s runs' %(n,settings.n_runs))
+    MINT_feats = {}
+    MINT_feat_names=[]
+    if settings.calc_MINT == 1:    
+        MINT_feats = run_opts.calc_MINT(XX,XXpredict,yy)
+#        MINT_feats = []
+#        for i in range(len(MINT_results)):
+#            MINT_feats.extend(MINT_results[i]['best_feats'])
+#        MINT_unique_feats = numpy.unique(MINT_feats)
+#        logging.info('MINT: Selected %s unique features for %s classes' %(len(MINT_unique_feats),i+1))
+
     if settings.one_vs_all == 1:
         tree_was_on = 0
         if settings.output_all_trees == 1:
@@ -400,7 +663,7 @@ for n in range(0,settings.n_runs):
             uniquetarget_pr_loop=[[uniquetarget_pr[0][i],'Other']]
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_one_vs_all[i],XXpredict_one_vs_all[i],numpy.array(yy_one_vs_all[i]),numpy.array(yypredict_one_vs_all[i]),unique_IDs_tr_loop,unique_IDs_pr_loop,uniquetarget_tr_loop,uniquetarget_pr_loop,n_feat,ind_run_name,n)
             one_vs_all_results.append({'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr[i],'result' : result,\
-            'feat_importance' : feat_importance,'uniquetarget_tr_loop' : uniquetarget_tr_loop,'accuracy' : accuracy,\
+            'feat_importance' : feat_importance,'uniquetarget_tr' : uniquetarget_tr_loop,'accuracy' : accuracy,\
             'recall' : recall,'precision':precision,'score':score})
 
             if settings.compute_mic == 1:
@@ -419,10 +682,53 @@ for n in range(0,settings.n_runs):
     
     if settings.actually_run == 1:# If it is set to actually run in settings
         ind_run_name = 'standard_%s' %n
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
-        results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr,'result' : result,'feat_importance' : feat_importance,\
-        'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
-        results_dict=results_dict+one_vs_all_results    
+        
+        if settings.compute_mifs==1:
+            mifs_results=[]
+            # define MI_FS feature selection method
+            for i in range(len(settings.mifs_types)):
+                mifs_run_name= ind_run_name+'_'+settings.mifs_types[i]
+                feat_selector = mifs.MutualInformationFeatureSelector(n_features=settings.mifs_n_feat,method=settings.mifs_types[i])
+                logger.info('Computing mifs type: %s' %settings.mifs_types[i])
+                feat_selector.fit(XX[:,:-1], numpy.int64(yy))
+                XX_mifs=numpy.transpose(XX.T[:-1,:][feat_selector.support_])
+                XXpredict_mifs=numpy.transpose(XXpredict.T[:-1,:][feat_selector.support_])
+                mifs_feat_names=(list(numpy.array(feat_names)[feat_selector.support_]))
+                result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_mifs,XXpredict_mifs,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,settings.mifs_n_feat,mifs_run_name,n)
+                mifs_results.append({'run_name' : mifs_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+                'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'mifs_feat_names' : mifs_feat_names,'feat_ranking':feat_selector.ranking_,'feat_ranking_sorted':numpy.sort(feat_selector.ranking_)})
+                
+        elif settings.calc_MINT == 1:
+            MINT_run_results=[]
+            MINT_run_name= ind_run_name+'_MINT'
+            
+            XX_MINT=numpy.transpose(numpy.transpose(XX[:,:-1])[MINT_feats['best_feats']])
+            XXpredict_MINT=numpy.transpose(numpy.transpose(XXpredict[:,:-1])[MINT_feats['best_feats']])
+            
+            MINT_feat_names=(list(numpy.array(feat_names)[MINT_feats['best_feats']]))
+            feat_names=MINT_feat_names
+            n_feat=len(feat_names)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,MINT_run_name,n)
+            MINT_run_results.append({'run_name' : MINT_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+            'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score,'MINT_feat_names' : MINT_feat_names})
+            
+        else:
+            findex=[]
+            if len(settings.onlyuse) > 0:
+                for numfilt in range(len(settings.onlyuse)):
+                    findex.append(feat_names.index(settings.onlyuse[numfilt]))
+                XX=[XX.T[n] for n in findex]
+                XXpredict=[XXpredict.T[m] for m in findex]
+                XX=numpy.transpose(XX)
+                XX=numpy.column_stack((XX,yy))
+                XXpredict=numpy.transpose(XXpredict)
+                feat_names=[feat_names[o] for o in findex]
+                n_feat= len(findex)
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+            results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
+            'accuracy' : accuracy,'recall' : recall,'precision':precision,'score':score}]
+        results_dict=results_dict+one_vs_all_results 
+        
         #MIC COMPUTE
         if settings.compute_mic == 1:
              mic_combs, mic_all = run_opts.compute_mic(XX,XXpredict)
@@ -445,9 +751,17 @@ for n in range(0,settings.n_runs):
         orig_train_num=settings.traindatanum
         settings.trainpath=settings.predpath
         settings.traindatanum=settings.predictdatanum
-        result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
+        if settings.calc_MINT==1:
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX_MINT,XXpredict_MINT,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,len(MINT_feats),MINT_run_name,n)
+        else:
+            result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
         settings.trainpath=orig_train_path
         settings.traindatanum=orig_train_num
+    if settings.gs_on == 1:
+        if settings.calc_MINT==0:
+            gs_res = run_opts.gridsearch(XX[:,:-1],XXpredict[:,:-1],yy,yypredict,clf)
+        else:
+            gs_res = run_opts.gridsearch(XX_MINT[:,:-1],XXpredict_MINT[:,:-1],yy,yypredict,clf)
         
     # PLOTS
     logger.info('Plotting ...')
@@ -462,7 +776,11 @@ for n in range(0,settings.n_runs):
     plots_mic_outnames = plots.plot_mic(feat_names)
     plots_pearson_outnames = plots.plot_pearson(feat_names)
     plots_mic_contributions_outnames = plots.plot_mic_cont(feat_names)
-
+    decision_boundaries_MINT_outnames = plots.decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniquetarget_tr)
+    decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
+    decision_boundaries_DT_outnames = plots.decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
+    plots_depth_acc_outnames = plots.plot_depth_acc(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,dered_tr_r,dered_pr_r)
+    plots_oob_err_rate = plots.plot_oob_err_rate(XX,yy)
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
         XXpredict = numpy.column_stack((XXpredict[:,:-1],result))
@@ -475,95 +793,103 @@ for n in range(0,settings.n_runs):
         run_opts.diagnostics([XX[:,-1],yypredict,subclass_names_tr,subclass_names_pr],'inputdata') # Total breakdown of types going in
         settings.MLA = settings.MLA(n_estimators=100,n_jobs=16,bootstrap=True,verbose=True) 
         result2,feat_importance2,probs2,bias2,contributions2,accuracy2,recall2,precision2,score2,clf2 = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
-
-image_IDs = {}
-if settings.get_images == 1:
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    for i in range(len(unique_IDS_pr)):
-        # create masks
-        yymask = yypredict == i
-        index_loop = numpy.where(yymask)
-        OBJID_pr_loop = OBJID_pr[yymask]
-        SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
-        result_loop = result[yymask]
-        yypredict_loop = yypredict[yymask]
-        probs_loop = probs[yymask]
-        RA_pr_loop = RA_pr[yymask]
-        DEC_pr_loop = DEC_pr[yymask]
-        specz_pr_loop = specz_pr[yymask]
         
-        good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
-        ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
-        bad_mask = probs_loop[:,i] < 0.1
-        
-        image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_SPECOBJID' : SPECOBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
-        , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_SPECOBJID' : SPECOBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
-        , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
+def get_images(XX,XXpredict):
+    if settings.get_images == 1:
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        for i in range(len(numpy.unique(unique_IDS_pr))):
+            # create masks
+            yymask = yypredict == unique_IDS_pr[i]  
+            index_loop = numpy.where(yymask)
+            OBJID_pr_loop = OBJID_pr[yymask]
+            SPECOBJID_pr_loop = SPECOBJID_pr[yymask]
+            result_loop = result[yymask]
+            yypredict_loop = yypredict[yymask]
+            probs_loop = probs[yymask]
+            RA_pr_loop = RA_pr[yymask]
+            DEC_pr_loop = DEC_pr[yymask]
+            specz_pr_loop = specz_pr[yymask]
+            
+            good_mask = (result_loop == yypredict_loop) & (probs_loop[:,i] > .9)
+            ok_mask = (probs_loop[:,i] > .45) & (probs_loop[:,i] < 0.55)
+            bad_mask = probs_loop[:,i] < 0.1
+            
+            image_IDs[i] = {'class' : unique_IDS_pr[i], 'good_ID' : OBJID_pr_loop[good_mask], 'good_SPECOBJID' : SPECOBJID_pr_loop[good_mask], 'good_RA' : RA_pr_loop[good_mask]\
+            , 'good_DEC' : DEC_pr_loop[good_mask], 'good_specz' : specz_pr_loop[good_mask], 'good_result' : result_loop[good_mask],'good_probs' : probs_loop[good_mask],'good_index' : index_loop[0][good_mask],'good_true_class' : yypredict_loop[good_mask], 'ok_ID' : OBJID_pr_loop[ok_mask], 'ok_SPECOBJID' : SPECOBJID_pr_loop[ok_mask], 'ok_RA' : RA_pr_loop[ok_mask]\
+            , 'ok_DEC' : DEC_pr_loop[ok_mask], 'ok_specz' : specz_pr_loop[ok_mask],'ok_result' : result_loop[ok_mask],'ok_probs' : probs_loop[ok_mask],'ok_index' : index_loop[0][ok_mask],'ok_true_class' : yypredict_loop[ok_mask], 'bad_ID' : OBJID_pr_loop[bad_mask], 'bad_SPECOBJID' : SPECOBJID_pr_loop[bad_mask], 'bad_RA' : RA_pr_loop[bad_mask], 'bad_DEC' : DEC_pr_loop[bad_mask], 'bad_specz' : specz_pr_loop[bad_mask], 'bad_result' : result_loop[bad_mask], 'bad_probs' : probs_loop[bad_mask],'bad_index' : index_loop[0][bad_mask],'bad_true_class' : yypredict_loop[bad_mask]}
+    
+        num_max_images = 10
+        for i in range(len(numpy.unique(unique_IDS_pr))):
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['good_ID']) > num_max_images:
+                top_good = num_max_images
+            else:
+                top_good = len(image_IDs[i]['good_ID'])
+            for j in range(0,top_good):   
+                img_ID_good = image_IDs[i]['good_ID'][j]
+                img_SPECOBJID_good = image_IDs[i]['good_SPECOBJID'][j]
+                img_RA_good = image_IDs[i]['good_RA'][j]
+                img_DEC_good = image_IDs[i]['good_DEC'][j]
+                img_index_good = image_IDs[i]['good_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_good]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_good)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
+            image_IDs[i].update({'good_url':url_list,'good_spectra' : url_spectra_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['ok_ID']) > num_max_images:
+                top_ok = num_max_images
+            else:
+                top_ok = len(image_IDs[i]['ok_ID'])
+            for j in range(0,top_ok):  
+                img_ID_ok = image_IDs[i]['ok_ID'][j]
+                img_SPECOBJID_ok = image_IDs[i]['ok_SPECOBJID'][j]
+                img_RA_ok =  image_IDs[i]['ok_RA'][j]
+                img_DEC_ok = image_IDs[i]['ok_DEC'][j]
+                img_index_ok = image_IDs[i]['ok_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_ok]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_ok)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
+            image_IDs[i].update({'ok_url':url_list,'ok_spectra' : url_spectra_list ,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
+            url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
+            if len(image_IDs[i]['bad_ID']) > num_max_images:
+                top_bad = num_max_images
+            else:
+                top_bad = len(image_IDs[i]['bad_ID'])
+            for j in range(0,top_bad):
+                img_ID_bad = image_IDs[i]['bad_ID'][j]
+                img_SPECOBJID_bad = image_IDs[i]['bad_SPECOBJID'][j]
+                img_RA_bad =  image_IDs[i]['bad_RA'][j]
+                img_DEC_bad = image_IDs[i]['bad_DEC'][j]
+                img_index_bad = image_IDs[i]['bad_index'][j]
+                img_values_loop = XXpredict[:,0:n_feat][img_index_bad]
+                tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
+                tiresult_list.append(tiresult)
+                img_values_list.append(img_values_loop)
+                url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
+                url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_bad)
+                url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
+            image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
+    return image_IDs
 
-    num_max_images = 10
-    for i in range(len(unique_IDS_pr)):
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['good_ID']) > num_max_images:
-            top_good = num_max_images
-        else:
-            top_good = len(image_IDs[i]['good_ID'])
-        for j in range(0,top_good):   
-            img_ID_good = image_IDs[i]['good_ID'][j]
-            img_SPECOBJID_good = image_IDs[i]['good_SPECOBJID'][j]
-            img_RA_good = image_IDs[i]['good_RA'][j]
-            img_DEC_good = image_IDs[i]['good_DEC'][j]
-            img_index_good = image_IDs[i]['good_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_good]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_good].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_good)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_good)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_good,img_DEC_good))
-        image_IDs[i].update({'good_url':url_list,'good_spectra' : url_spectra_list, 'good_tiresult' : tiresult_list, 'good_url_objid' : url_objid_list, 'good_values' : img_values_list})
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['ok_ID']) > num_max_images:
-            top_ok = num_max_images
-        else:
-            top_ok = len(image_IDs[i]['ok_ID'])
-        for j in range(0,top_ok):  
-            img_ID_ok = image_IDs[i]['ok_ID'][j]
-            img_SPECOBJID_ok = image_IDs[i]['ok_SPECOBJID'][j]
-            img_RA_ok =  image_IDs[i]['ok_RA'][j]
-            img_DEC_ok = image_IDs[i]['ok_DEC'][j]
-            img_index_ok = image_IDs[i]['ok_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_ok]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_ok].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_ok)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_ok)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_ok,img_DEC_ok))
-        image_IDs[i].update({'ok_url':url_list,'ok_spectra' : url_spectra_list ,'ok_tiresult' : tiresult_list, 'ok_url_objid' : url_objid_list, 'ok_values' : img_values_list})
-        url_list,url_objid_list,url_spectra_list,tiresult_list,img_values_list=[],[],[],[],[]
-        if len(image_IDs[i]['bad_ID']) > num_max_images:
-            top_bad = num_max_images
-        else:
-            top_bad = len(image_IDs[i]['bad_ID'])
-        for j in range(0,top_bad):
-            img_ID_bad = image_IDs[i]['bad_ID'][j]
-            img_SPECOBJID_bad = image_IDs[i]['bad_SPECOBJID'][j]
-            img_RA_bad =  image_IDs[i]['bad_RA'][j]
-            img_DEC_bad = image_IDs[i]['bad_DEC'][j]
-            img_index_bad = image_IDs[i]['bad_index'][j]
-            img_values_loop = XXpredict[:,0:n_feat][img_index_bad]
-            tiresult = ti.predict(clf,XXpredict[:,0:n_feat][img_index_bad].reshape(1,-1))
-            tiresult_list.append(tiresult)
-            img_values_list.append(img_values_loop)
-            url_objid_list.append('http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=%s' %img_ID_bad)
-            url_spectra_list.append('http://skyserver.sdss.org/dr12/en/get/SpecById.ashx?id=%s' %img_SPECOBJID_bad)
-            url_list.append('http://skyserver.sdss.org/SkyserverWS/dr12/ImgCutout/getjpeg?TaskName=Skyserver.Explore.Image&ra=%s&dec=%s&scale=0.2&width=200&height=200&opt=G' %(img_RA_bad,img_DEC_bad))
-        image_IDs[i].update({'bad_url':url_list,'bad_spectra' : url_spectra_list,'bad_tiresult' : tiresult_list, 'bad_url_objid' : url_objid_list, 'bad_values' : img_values_list})
-
-htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
-,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
-,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
-,plots_mic_contributions_outnames)
+if settings.calc_MINT == 1:
+    get_images(XX_MINT,XXpredict_MINT)
+elif settings.compute_mifs == 1:
+    get_images(XX_mifs,XXpredict_mifs)
+else:
+    get_images(XX,XXpredict)
+if settings.html_on==1:
+        htmloutput.htmloutput(ind_run_name,accuracy,uniquetarget_tr,recall,precision,score,clf,col_names,plots_col_cont_outnames\
+        ,plots_col_cont_true_outnames,plots_col_rad_outnames,plots_bandvprob_outnames,plots_feat_outname\
+        ,plots_feat_per_class_outname,plots_colourvprob_outnames,image_IDs,feat_names,plots_mic_outnames,plots_pearson_outnames\
+        ,plots_mic_contributions_outnames,results_dict,decision_boundaries_outnames,plots_depth_acc_outnames)
 
 logger.removeHandler(console)
 #http://skyserver.sdss.org/dr12/en/tools/explore/Summary.aspx?id=1237655129301975515
