@@ -706,8 +706,8 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
             clf = clf.fit(XX[:,combs[i][0],None],yy)        
             result= clf.predict(XXpredict[:,combs[i][0],None])
             accuracy = metrics.accuracy_score(result,yypredict)
-#            estimator_alpha = 1.0 / len(clf.estimators_)
-#            for tree in clf.estimators_:
+    #            estimator_alpha = 1.0 / len(clf.estimators_)
+    #            for tree in clf.estimators_:
             Z = clf.predict(numpy.c_[xxx.ravel()])
             Z = Z.reshape(xxx.shape)
             cs = plt.contourf(xxx, yyy, Z, cmap=cmap)  
@@ -819,6 +819,81 @@ def plot_oob_err_rate(XX,yy):
         plt.savefig(outname)
         plt.close()
     return outnamelist
+
+def plot_extratest(XX,yy,XXpredict,yypredict,uniquetarget_tr,feat_names,MINT_feats):
+    outnamelist=[]
+    if settings.plot_extratest==1:
+        plot_step = 0.01
+#        plot_step_coarser= 0.001
+        cmap = plt.cm.RdBu
+        plot_colors = "rb"
+        XX=numpy.transpose(XX.T[0:2])
+        #        XXpredict=numpy.transpose(XXpredict.T[MINT_feats['best_feats']])
+        dirs=os.listdir(path)
+        savedir='plot_extratest' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)  
+           # Now plot the decision boundary using a fine mesh as input to a
+        # filled contour plot
+        x_min, x_max = XX[:, 0].min() - 1, XX[:, 0].max() + 1
+        y_min, y_max = XX[:, 1].min() - 1, XX[:, 1].max() + 1
+        xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step), numpy.arange(y_min, y_max, plot_step))
+    
+        # Plot either a single DecisionTreeClassifier or alpha blend the
+        # decision surfaces of the ensemble of classifiers
+            # Choose alpha blend level with respect to the number of estimators
+            # that are in use (noting that AdaBoost can use fewer estimators
+            # than its maximum if it achieves a good enough fit early on)
+        MLA = get_function(settings.MLA)        
+        clf = MLA().set_params(**settings.MLAset)
+        clf = clf.fit(XX,yy)
+        estimator_alpha = 1.0 / len(clf.estimators_)
+        for eachtree in clf.estimators_:
+            Z = eachtree.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
+            Z = Z.reshape(xxx.shape)
+#                plt.contour(xxx, yyy, Z, cmap=cmap, lw=0.1)
+            cs = plt.contourf(xxx, yyy, Z, alpha=estimator_alpha, cmap=cmap) 
+            for c in cs.collections:
+                c.set_rasterized(True)
+            for c in cs.collections: 
+                c.set_antialiased(False) 
+#                for c in cs.collections:
+#                    c.set_edgecolor("face")
+#        xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
+#        Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
+#        targets=[]
+#        cs_points = plt.scatter(xx_coarser, yy_coarser, s=8,
+#                                c=Z_points_coarser, cmap=cmap,
+#                                edgecolors="none")
+#        cs_contour= plt.contourf(xx_coarser,yy_coarser,Z_points_coarser,cmap=cmap)
+        #cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
+        targets=[]
+        targets.append(r'Galaxies')
+        targets.append(r'Point Sources')
+        for j, c in zip(range(2), plot_colors):
+            idx = numpy.where(yy == j)
+            plt.scatter(XX[idx, 0], XX[idx, 1], c=c, label=targets[j], cmap=cmap,s=5,edgecolors="none")
+        axes = plt.gca()
+        yaxes = axes.get_ylim()
+        absy=yaxes[1]-yaxes[0]
+        deltay=0.145-yaxes[0]
+        xaxes = axes.get_xlim()
+        absx=xaxes[1]-xaxes[0]
+        deltax=0.145-xaxes[0]
+        plt.xlabel(feat_names[0])
+        plt.ylabel(feat_names[1])
+        plt.legend(loc="upper right")
+#        plt.show()
+        outname='plots/'+savedir+'/extratest.'
+        plt.savefig(outname+'pdf', format='pdf', bbox_inches ='tight')
+        outnamelist.append(outname)
+        plt.tight_layout()
+        plt.savefig(outname+'png')
+        plt.close()
+    return outnamelist
+
+
 
 def get_function(function_string):
     import importlib
