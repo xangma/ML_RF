@@ -20,10 +20,10 @@ dirs=os.listdir(cwd)
 
 # Variables to iterate through
 
-n_estimators=numpy.array([16,32,64,128,256,512,1024,2048,4096])
-#n_estimators=numpy.array([16])
-n_train=numpy.array([100,500,1000,2500,5000,10000,25000])
-n_depth=numpy.array([11.0,12.0,'None'])
+#n_estimators=numpy.array([16,32,64,128,256,512,1024,2048,4096])
+n_estimators=numpy.array([64])
+n_train=numpy.array([1000,2500,5000,10000,25000])
+n_depth=numpy.array(['None'])
 MINT_n_feat=numpy.array([4,5,6,7,8,9,10,11,12])
 #n_estimators=numpy.array([8,16])
 #n_train=numpy.array([100,500])
@@ -32,7 +32,7 @@ MINT_n_feat=numpy.array([4,5,6,7,8,9,10,11,12])
 ##    n_proc= numpy.array([4,7,8,9,10,11,12,13,14,15,16])
 #    n_proc= numpy.array([6,8,8,10,10,12,12])
 #else:
-n_proc= numpy.array([6,8,8,10,10,12,12])
+n_proc= numpy.array([8,10,12,16,16])
 
 # CREATE DIRECTORIES AND COPY CODE UP
 
@@ -72,7 +72,7 @@ for nmint in range(0,len(MINT_n_feat)):
                     set_file.write("\nprogrampath='"+fullpath+"'")
                     set_file.write("\n")
                     set_file.write("\nMLA = 'sklearn.ensemble.RandomForestClassifier'")
-                    set_file.write("\nMLAset = {'n_estimators': %s, 'n_jobs': 4,'bootstrap':True,'verbose':True,'max_depth':%s}"%(n_estimators[k],n_depth[i]))
+                    set_file.write("\nMLAset = {'n_estimators': %s, 'n_jobs': 8,'bootstrap':True,'verbose':True,'max_depth':%s}"%(n_estimators[k],n_depth[i]))
                     set_file.write("\ncalc_MINT = 1")
                     set_file.write("\nMINT_n_feat=%s"%MINT_n_feat[nmint])              
                     set_file.write("\ntraindatanum=%s"%n_train[j])
@@ -92,14 +92,14 @@ for nmint in range(0,len(MINT_n_feat)):
                  
                 # Customize your options here
                 job_name = "ML_RF_sciamajob_%s" %run_namewo
-                walltime = "6:00:00"
+                walltime = "48:00:00"
                 processors = "nodes=1:ppn=%s" %n_proc[j]
                 command = "python MLdr12_RF.py"
 #                if MINT==1:            
 #    #                queue = ""
 #                    queue="#PBS -q sciama1.q"
 #                else: 
-                queue="#PBS -q sciama1.q"
+                queue="#PBS -q cluster.q"
                  
                 job_string = """#!/bin/bash
                 #PBS -N %s_numcat*10

@@ -36,3 +36,11 @@ settings.py
 untitled0.py
 
 untitled1.py
+
+*.npy
+
+*.pdf
+
+*.png
+
+plotinputsims.py
