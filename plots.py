@@ -706,8 +706,8 @@ def decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
             clf = clf.fit(XX[:,combs[i][0],None],yy)        
             result= clf.predict(XXpredict[:,combs[i][0],None])
             accuracy = metrics.accuracy_score(result,yypredict)
-#            estimator_alpha = 1.0 / len(clf.estimators_)
-#            for tree in clf.estimators_:
+    #            estimator_alpha = 1.0 / len(clf.estimators_)
+    #            for tree in clf.estimators_:
             Z = clf.predict(numpy.c_[xxx.ravel()])
             Z = Z.reshape(xxx.shape)
             cs = plt.contourf(xxx, yyy, Z, cmap=cmap)  
@@ -770,7 +770,7 @@ def plot_depth_acc(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_
         plt.close()
     return outnamelist
 
-def plot_oob_err_rate(XX,yy,XXpredict):
+def plot_oob_err_rate(XX,yy):
     outnamelist=[]
     if settings.plot_oob_err_rate==1:
         dirs=os.listdir(path)
@@ -818,7 +818,159 @@ def plot_oob_err_rate(XX,yy,XXpredict):
         plt.tight_layout()
         plt.savefig(outname)
         plt.close()
+
     return outnamelist
+
+def plot_extratest(XX,yy,XXpredict,yypredict,uniquetarget_tr,feat_names,MINT_feats):
+    outnamelist=[]
+    if settings.plot_extratest==1:
+        plot_step = 0.01
+        plot_step_coarser= 0.005
+        cmap = plt.cm.RdBu
+        plot_colors = "rb"
+        XX=numpy.transpose(XX.T[0:2])
+        #        XXpredict=numpy.transpose(XXpredict.T[MINT_feats['best_feats']])
+        dirs=os.listdir(path)
+        savedir='plot_extratest' # Check if directory exists, if not, create
+        fullsavedir=path+savedir+'/'
+        if savedir not in dirs:
+            os.mkdir(fullsavedir)  
+           # Now plot the decision boundary using a fine mesh as input to a
+        # filled contour plot
+        x_min, x_max = XX[:, 0].min() - 1, XX[:, 0].max() + 1
+        y_min, y_max = XX[:, 1].min() - 1, XX[:, 1].max() + 1
+        xxx, yyy = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step), numpy.arange(y_min, y_max, plot_step))
+        
+        # Plot either a single DecisionTreeClassifier or alpha blend the
+        # decision surfaces of the ensemble of classifiers
+            # Choose alpha blend level with respect to the number of estimators
+            # that are in use (noting that AdaBoost can use fewer estimators
+            # than its maximum if it achieves a good enough fit early on)
+        MLA = get_function(settings.MLA)        
+        clf = MLA().set_params(**settings.MLAset)
+        clf = clf.fit(XX,yy)
+        #        estimator_alpha = 1.0 / len(clf.estimators_)
+        #        for eachtree in clf.estimators_:
+        #            Z = eachtree.predict(numpy.c_[xxx.ravel(), yyy.ravel()])
+        #            Z = Z.reshape(xxx.shape)
+        ##                plt.contour(xxx, yyy, Z, cmap=cmap, lw=0.1)
+        #            cs = plt.contourf(xxx, yyy, Z, alpha=estimator_alpha, cmap=cmap) 
+        #            for c in cs.collections:
+        #                c.set_rasterized(True)
+        #            for c in cs.collections: 
+        #                c.set_antialiased(False) 
+        #                for c in cs.collections:
+        #                    c.set_edgecolor("face")
+        xx_coarser, yy_coarser = numpy.meshgrid(numpy.arange(x_min, x_max, plot_step_coarser),numpy.arange(y_min, y_max, plot_step_coarser))
+        Z_points_coarser = clf.predict(numpy.c_[xx_coarser.ravel(), yy_coarser.ravel()]).reshape(xx_coarser.shape)
+        #        targets=[]
+        #        cs_points = plt.scatter(xx_coarser, yy_coarser, s=8,
+        #                                c=Z_points_coarser, cmap=cmap,
+        #                                edgecolors="none")
+#        cs_contour= plt.contourf(xx_coarser,yy_coarser,Z_points_coarser,cmap=cmap)
+        #cs_points = plt.scatter(xx_coarser, yy_coarser, s=15, c=Z_points_coarser, cmap=cmap, edgecolors="none")
+        targets=[]
+        targets.append(r'Galaxies')
+        targets.append(r'Point Sources')
+        for j, c in zip(range(2), plot_colors):
+            idx = numpy.where(yy == j)
+            plt.scatter(XX[idx, 0], XX[idx, 1], c=c, label=targets[j], cmap=cmap,s=5,edgecolors="none")
+        axes = plt.gca()
+        #        yaxes = axes.get_ylim()
+        #        absy=yaxes[1]-yaxes[0]
+        #        deltay=0.145-yaxes[0]
+        #        xaxes = axes.get_xlim()
+        #        absx=xaxes[1]-xaxes[0]
+        #        deltax=0.145-xaxes[0]
+
+        
+        from sklearn import linear_model
+        def graph(formula, x_range):  
+            x = numpy.array(x_range)  
+            y = eval(formula)
+            return x,y
+        #        predgrid=numpy.load('plots/plot_extratest/extratest..npy')
+        predgrid=[xx_coarser,yy_coarser,Z_points_coarser]
+        x_train=numpy.dstack((predgrid[0].flatten(),predgrid[1].flatten()))
+        x_train=x_train[0]
+        y_train=predgrid[2].flatten()
+        #        y_train=y_train.T
+        from sklearn.svm import LinearSVC
+        from geompreds import orient2d
+        from numpy.linalg import lstsq
+        import math
+        clf = LinearSVC(C=1,max_iter=500,tol=0.001, verbose=1,dual=False)
+        mask = ((x_train[:,0] >17.8)&(x_train[:,0] < 19.8))
+        clf.fit(x_train[mask], y_train[mask]) 
+        # get the separating hyperplane
+        w = clf.coef_[0]
+        a = -w[0] / w[1]
+        xx = numpy.linspace(numpy.int(x_min), numpy.int(x_max))
+        yyy = a * xx - (clf.intercept_[0]) / w[1]
+#        plt.plot(xx[3:], yyy[3:],'g-',label='random forest',linewidth=3)
+        yy_fr=xx-0.145
+        plt.plot(xx[3:], yy_fr[3:],'k--',label='frames',linewidth=3)
+        #y-x=0.145
+        #        x,y=graph('(linear.coef_[1]*x) + (linear.coef_[0]*x) + linear.intercept_', range(numpy.int(x_min), numpy.int(x_max)))
+        #        plt.plot(x,y)
+        plt.xlabel(r'Psfmag_I')
+        plt.ylabel(r'Cmodelmag_I')
+        plt.legend(loc="upper left",scatterpoints=1)
+        #        plt.show()
+        outname='plots/'+savedir+'/frames_Iband_cut.'
+        plt.savefig(outname+'pdf', format='pdf', bbox_inches ='tight')
+        numpy.save(outname,[xx_coarser,yy_coarser,Z_points_coarser])
+        outnamelist.append(outname)
+        plt.tight_layout()
+        plt.savefig(outname+'png')
+        plt.close()
+        def getSlope(x1, y1,x2, y2):
+            return (float(y2)-y1)/(float(x2)-x1)
+        def getYInt(x1, y1, x2, y2):
+            slope = getSlope(x1, y1, x2, y2)
+            y = y1-x1*slope
+            return (0, y)
+        # Find which points are on which side calc
+        #MYCUT
+        test=[[17,13],[13,17]]
+        v1 = [max(xx)-min(xx), max(yyy)-min(yyy)]   # Vector 1
+        points=[(min(xx),min(yyy)),(max(xx),max(yyy))]
+        x_coords, y_coords = zip(*points)
+        A = numpy.vstack([x_coords,numpy.ones(len(x_coords))]).T
+        m, c = getSlope(points[0][0],points[0][1],points[1][0],points[1][1]),getYInt(points[0][0],points[0][1],points[1][0],points[1][1])
+        print("Line Solution is y = {m}x + {c}".format(m=m,c=c[1]))
+        mycut_res=[]
+        for i in range(len(XX)):
+#            xp=orient2d((min(xx),min(yyy)),(max(xx),max(yyy)),(XX[i][0],XX[i][1]))
+            v2 = [max(xx)-XX[i][0], max(yyy)-XX[i][1]]   # Vector 2
+            xp = v1[0]*v2[1] - v1[1]*v2[0]  # Cross product
+            if xp >= math.cos(math.pi/2):
+                mycut_res.append([0])
+            elif xp < math.cos(math.pi/2):
+                mycut_res.append([1])
+        mycut_acc=sum(yy==numpy.transpose(mycut_res)[0])/len(XX)*100
+        print('Mycut accuracy = %s' %mycut_acc)
+        #FRAMES
+        v1 = [x_max-x_min, max(yy_fr)-min(yy_fr)]   # Vector 1
+        points=[(min(xx),min(yy_fr)),(max(xx),max(yy_fr))]
+        x_coords, y_coords = zip(*points)
+        A = numpy.vstack([x_coords,numpy.ones(len(x_coords))]).T
+        m, c = getSlope(points[0][0],points[0][1],points[1][0],points[1][1]),getYInt(points[0][0],points[0][1],points[1][0],points[1][1])
+        print("Line Solution is y = {m}x + {c}".format(m=m,c=c[1]))
+        frames_res=[]
+        for i in range(len(XX)):
+            xp=XX[i][0]-XX[i][1]
+#            v2 = [x_max-XX[i][0], max(yy_fr)-XX[i][1]]   # Vector 1
+#            xp = v1[0]*v2[1] - v1[1]*v2[0]  # Cross product
+            if xp > 0.145:
+                frames_res.append([0])
+            elif xp < 0.145:
+                frames_res.append([1])      
+        frames_acc=sum(yy==numpy.transpose(frames_res)[0])/len(XX)*100
+        print('Apparent frames accuracy = %s' %frames_acc)
+    return outnamelist
+
+
 
 def get_function(function_string):
     import importlib

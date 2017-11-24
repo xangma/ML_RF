@@ -73,10 +73,12 @@ else:
 #    traindata=traindata[1].data
 #    preddata=fits.open(settings.predpath)
 #    preddata=preddata[1].data
+    selected_obj=numpy.load('/users/moricex/ML_RF/selected_obj.npy')
     datadata=fits.open(settings.datapath)
     datadata=datadata[1].data # This is by far my favourite line
     catlen=len(datadata)
-    selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
+    random.seed=(2000)
+#    selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
     traindata=datadata[selected_obj[0:100000]]
     preddata=datadata[selected_obj[100000:]]
     del datadata
@@ -161,6 +163,7 @@ if settings.calculate_cross_colours==0:
 else:
     feat_names = feat_names+filt_names+col_names
 feat_names = feat_names+settings.othertrain
+
 # Stack arrays to feed to MLA
 XX=numpy.array(filt_train_all[0][0])
 if len(filt_train_all[0]) >= 1:
@@ -275,7 +278,6 @@ XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_
 ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r\
  = run_opts.checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
 ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r)
-
 XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr = run_opts.weightinput(XX,classnames_tr,OBJID_tr,RA_tr,DEC_tr,specz_tr) # Weight training set? - specified in settings
 
 XX = XX[0:traindatanum] # Cut whole training array down to size specified in settings
@@ -537,7 +539,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         clf = MLA().set_params(**settings.MLAset)
         logger.info('MLA settings') 
         logger.info(clf)
-        logger.info('------------')    
+        logger.info('------------')
         start, end=[],[] # Timer
         logger.info('Fit start')
         logger.info('------------')
@@ -564,7 +566,8 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         start, end=[],[]
         # Split cats for RAM management
         if settings.MLA == 'sklearn.ensemble.RandomForestClassifier':
-            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs))
+#            numcats = numpy.int64((2*(XXpredict.size/1024/1024)*clf.n_jobs)*10)
+            numcats = numpy.int64(2*(XXpredict.size/1024/1024)*10)
         else:
             numcats = numpy.int64(2*(XXpredict.size/1024/1024)*10)
         if settings.get_contributions ==1:
@@ -624,7 +627,6 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
     if settings.saveresults == 1:
         logger.info('Saving results')
         logger.info('------------')
-
         numpy.savetxt(settings.result_outfile+('_%s' %ind_run_name)+'.txt',numpy.column_stack((yypredict,result)),header="True_target Predicted_target")
         numpy.savetxt(settings.prob_outfile+('_%s' %ind_run_name)+'.txt',probs)
         numpy.savetxt(settings.feat_outfile+('_%s' %ind_run_name)+'.txt',feat_importance)
@@ -717,11 +719,11 @@ for n in range(0,settings.n_runs):
                 for numfilt in range(len(settings.onlyuse)):
                     findex.append(feat_names.index(settings.onlyuse[numfilt]))
                 XX=[XX.T[n] for n in findex]
-                XXpredict=[XXpredict.T[n] for n in findex]
+                XXpredict=[XXpredict.T[m] for m in findex]
                 XX=numpy.transpose(XX)
                 XX=numpy.column_stack((XX,yy))
                 XXpredict=numpy.transpose(XXpredict)
-                feat_names=[feat_names[n] for n in findex]
+                feat_names=[feat_names[o] for o in findex]
                 n_feat= len(findex)
             result,feat_importance,probs,bias,contributions,accuracy,recall,precision,score,clf,train_contributions = run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_tr,uniquetarget_pr,n_feat,ind_run_name,n)
             results_dict = [{'run_name' : ind_run_name, 'class_ID' : unique_IDS_tr, 'uniquetarget_tr' : uniquetarget_tr,'result' : result,'feat_importance' : feat_importance,\
@@ -779,7 +781,8 @@ for n in range(0,settings.n_runs):
     decision_boundaries_outnames = plots.decision_boundaries(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
     decision_boundaries_DT_outnames = plots.decision_boundaries_DT(XX,XXpredict,yy,yypredict,feat_names,uniquetarget_tr)
     plots_depth_acc_outnames = plots.plot_depth_acc(XXpredict,result,yypredict,feat_names,filtstats,uniquetarget_tr,dered_tr_r,dered_pr_r)
-
+    plots_oob_err_rate = plots.plot_oob_err_rate(XX,yy)
+    plots_extratest = plots.plot_extratest(XX,yy,XXpredict,yypredict,uniquetarget_tr,feat_names,MINT_feats)
     if settings.double_sub_run == 1:
         XX = numpy.column_stack((XX,subclass_tr))
         XXpredict = numpy.column_stack((XXpredict[:,:-1],result))

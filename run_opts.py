@@ -14,13 +14,23 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 from scipy.stats import pearsonr
 from sklearn.metrics import mutual_info_score
 from collections import defaultdict
-from sklearn.model_selection import GridSearchCV
+from spark_sklearn import GridSearchCV
 from time import time
 from sklearn.metrics import classification_report
+import numpy.ma as ma
+from operator import itemgetter
 
+from pyspark import SparkContext,SparkConf
+
+conf = SparkConf().setAppName("App")
+conf = (conf.setMaster('local[*]')
+        .set('spark.executor.memory', '4G')
+        .set('spark.driver.memory', '45G')
+        .set('spark.driver.maxResultSize', '10G'))
+sc = SparkContext(conf=conf)
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
-def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
+def checkmagspos_old(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
 ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r):
     if settings.checkmagspos == 1: # If set to check for neg mags
         run_opts_log.info('')
@@ -61,6 +71,55 @@ def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subc
             ,objc_type_pr[XXpred_neg_index],objc_type_pr_u[XXpred_neg_index],objc_type_pr_g[XXpred_neg_index],objc_type_pr_r[XXpred_neg_index],objc_type_pr_i[XXpred_neg_index],objc_type_pr_z[XXpred_neg_index]
             dered_tr_r=dered_tr_r[XX_neg_index]
             dered_pr_r=dered_pr_r[XXpred_neg_index]
+            
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
+    else:
+        return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
+        ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
+
+def checkmagspos(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
+,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r):
+    if settings.checkmagspos == 1: # If set to check for neg mags
+        run_opts_log.info('')
+        checkmagspos_log=logging.getLogger('checkmagspos')
+        checkmagspos_log.info('Checking mags aren''t below 0 ...')
+        checkmagspos_log.info('------------')
+#        checkmagspos_log.info(len(XX))
+#        n=bottom+filtstats[i][0]
+        checkmagspos_log.info('Checking mags in XX')
+        negmagsXX=numpy.where((XX <-50) | (XX>60))
+        negmagsXX2=numpy.where(XX[:,0:len(settings.filters)] <5)
+        negmagsXX=numpy.concatenate((negmagsXX[0],negmagsXX2[0]))
+        negmagsXXind = [x in numpy.unique(negmagsXX) for x in range(len(XX))]
+        XX_neg_index= ~numpy.array(negmagsXXind)
+
+        negmagsXXpred=numpy.where((XXpredict <-50) | (XXpredict>60))
+        negmagsXXpred2=numpy.where(XXpredict[:,0:len(settings.filters)] <5)
+        negmagsXXpred=numpy.concatenate((negmagsXXpred[0],negmagsXXpred2[0]))
+        negmagsXXpredind = [x in numpy.unique(negmagsXXpred) for x in range(len(XXpredict))]
+        XXpred_neg_index= ~numpy.array(negmagsXXpredind)        
+        
+        XX = XX[XX_neg_index]
+        XXpredict = XXpredict[XXpred_neg_index]
+        
+        classnames_tr=classnames_tr[XX_neg_index]
+        classnames_pr=classnames_pr[XXpred_neg_index]
+        subclass_tr = subclass_tr[XX_neg_index]
+        subclass_names_tr=subclass_names_tr[XX_neg_index]
+        subclass_pr=subclass_pr[XXpred_neg_index]
+        subclass_names_pr=subclass_names_pr[XXpred_neg_index]
+        OBJID_tr = OBJID_tr[XX_neg_index]
+        OBJID_pr = OBJID_pr[XXpred_neg_index]
+        SPECOBJID_pr =SPECOBJID_pr[XXpred_neg_index]
+        RA_tr,DEC_tr = RA_tr[XX_neg_index],DEC_tr[XX_neg_index]
+        RA_pr,DEC_pr = RA_pr[XXpred_neg_index],DEC_pr[XXpred_neg_index]
+        specz_tr,specz_pr = specz_tr[XX_neg_index],specz_pr[XXpred_neg_index]
+        objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z\
+        = objc_type_tr[XX_neg_index],objc_type_tr_u[XX_neg_index],objc_type_tr_g[XX_neg_index],objc_type_tr_r[XX_neg_index],objc_type_tr_i[XX_neg_index],objc_type_tr_z[XX_neg_index]\
+        ,objc_type_pr[XXpred_neg_index],objc_type_pr_u[XXpred_neg_index],objc_type_pr_g[XXpred_neg_index],objc_type_pr_r[XXpred_neg_index],objc_type_pr_i[XXpred_neg_index],objc_type_pr_z[XXpred_neg_index]
+        dered_tr_r=dered_tr_r[XX_neg_index]
+        dered_pr_r=dered_pr_r[XXpred_neg_index]
             
         return XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr\
         ,objc_type_tr,objc_type_tr_u,objc_type_tr_g,objc_type_tr_r,objc_type_tr_i,objc_type_tr_z,objc_type_pr,objc_type_pr_u,objc_type_pr_g,objc_type_pr_r,objc_type_pr_i,objc_type_pr_z,dered_tr_r,dered_pr_r
@@ -376,20 +435,18 @@ def gridsearch(XX,XXpredict,yy,yypredict,clf):
 #    tuned_parameters=settings.param_grid
     param_grid=settings.param_grid  
     print("Gridsearch start")
-    def report(results, n_top=3):
-        for i in range(1, n_top + 1):
-            candidates = numpy.flatnonzero(results['rank_test_score'] == i)
-            for candidate in candidates:
-                print("Model with rank: {0}".format(i))
-                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(results['mean_test_score'][candidate],results['std_test_score'][candidate]))
-                print("Parameters: {0}".format(results['params'][candidate]))
-                print("")
-    grid_search = GridSearchCV(clf, param_grid=param_grid,cv=10,n_jobs=8,verbose=1)
+    def report(grid_scores, n_top=3):
+    	top_scores = sorted(grid_scores, key=itemgetter(1), reverse=True)[:n_top]
+    	for i, score in enumerate(top_scores):
+            print("Model with rank: {0}".format(i + 1))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})".format(score.mean_validation_score, numpy.std(score.cv_validation_scores)))
+            print("Parameters: {0}".format(score.parameters))
+            print("")
+    grid_search = GridSearchCV(sc, clf, param_grid=param_grid,cv=10,n_jobs=-1,verbose=1)
     start = time()
     grid_search.fit(XX, yy)
-
-    print("GridSearchCV took %.2f seconds for %d candidate parameter settings."% (time() - start, len(grid_search.cv_results_['params'])))
-    report(grid_search.cv_results_)
+    print("GridSearchCV took {:.2f} seconds for {:d} candidate settings.".format(time() - start, len(grid_search.grid_scores_)))
+    report(grid_search.grid_scores_)
     return grid_search
 #    X_train, X_test, y_train, y_test = XX,XXpredict,yy,yypredict
 #    
