@@ -28,6 +28,7 @@ conf = (conf.setMaster('local[*]')
         .set('spark.driver.memory', '45G')
         .set('spark.driver.maxResultSize', '10G'))
 sc = SparkContext(conf=conf)
+
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
 def checkmagspos_old(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\

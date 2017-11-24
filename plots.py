@@ -578,7 +578,6 @@ def decision_boundaries_MINT(XX,XXpredict,yy,MINT_feats,MINT_feat_names,uniqueta
         
         combs_MINT_index = list(it.combinations(MINT_feats['best_feats'],2))
         combs = list(it.combinations(range(len(MINT_feats['best_feats'])),2))
-        
         for i in range(len(combs_MINT_index)):
             fig=plt.figure()
             x_min, x_max = XX[:, combs_MINT_index[i][0]].min() - 1, XX[:, combs_MINT_index[i][0]].max() + 1
