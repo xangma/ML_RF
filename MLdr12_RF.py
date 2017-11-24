@@ -73,11 +73,19 @@ else:
 #    traindata=traindata[1].data
 #    preddata=fits.open(settings.predpath)
 #    preddata=preddata[1].data
+<<<<<<< dev
+    selected_obj=numpy.load('/users/moricex/ML_RF/selected_obj.npy')
+=======
+>>>>>>> master
     datadata=fits.open(settings.datapath)
     datadata=datadata[1].data # This is by far my favourite line
     catlen=len(datadata)
     random.seed=(2000)
+<<<<<<< dev
+#    selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
+=======
     selected_obj=random.sample(range(catlen), 100000+(round(float(predictdatanum)*1.2)))
+>>>>>>> master
     traindata=datadata[selected_obj[0:100000]]
     preddata=datadata[selected_obj[100000:]]
     del datadata
@@ -538,7 +546,7 @@ def run_MLA(XX,XXpredict,yy,yypredict,unique_IDS_tr,unique_IDS_pr,uniquetarget_t
         clf = MLA().set_params(**settings.MLAset)
         logger.info('MLA settings') 
         logger.info(clf)
-        logger.info('------------')    
+        logger.info('------------')
         start, end=[],[] # Timer
         logger.info('Fit start')
         logger.info('------------')

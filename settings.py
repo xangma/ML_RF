@@ -11,7 +11,8 @@ filters=[['DERED_U','DERED_G','DERED_R','DERED_I','DERED_Z']\
 othertrain=['EXPRAD_U','EXPRAD_G','EXPRAD_R','EXPRAD_I','EXPRAD_Z']#['SPEC_CLASS_ID']#['SPECZ']                                   # Other features to give the MLA
 predict = 'SPEC_CLASS_ID'                                                   # Feature to predict
 
-onlyuse=['PSFMAG_I', 'CMODELMAG_I_EXT']
+
+onlyuse=['PSFMAG_U - CMODELMAG_U_EXT','PSFMAG_G - CMODELMAG_G_EXT','PSFMAG_R - CMODELMAG_R_EXT','PSFMAG_I - CMODELMAG_I_EXT','PSFMAG_Z - CMODELMAG_Z_EXT']
 #onlyuse=[]
 double_sub_run = 0
 one_vs_all = 0                                                              # WARNING. Takes as many runs as there are classes in training set
@@ -31,7 +32,8 @@ featnames_outfile='ML_RF_featnames'
 scores_outfile='ML_RF_scores'
 
 # THESE TAKE CONSIDERABLY MORE TIME (and also save automatically)
-output_all_trees = 1
+
+output_all_trees = 0
 output_ex_tree = 0
 get_contributions = 0
 get_perfect_contributions=0
@@ -58,7 +60,7 @@ cut_outliers=0
 diagnostics=1
 # MLA settings
 MLA = 'sklearn.ensemble.RandomForestClassifier'                             # Which MLA to load
-MLAset = {'n_estimators':64, 'n_jobs': 16, 'max_features': None,'max_depth': None}         # MLA settings
+MLAset = {'min_samples_leaf': 3, 'criterion': 'gini', 'n_estimators': 64, 'max_features': 3, 'max_depth': None, 'min_samples_split': 3, 'n_jobs': 8}         # MLA settings
 #MLA = 'sklearn.ensemble.AdaBoostClassifier'
 #MLAset = {'n_estimators':1024,'learning_rate':1}
 #MLA = 'sklearn.ensemble.ExtraTreesClassifier'                             # Which MLA to load

@@ -14,10 +14,21 @@ run_opts_log=logging.getLogger('run_opts') # Set up overall logger for file
 from scipy.stats import pearsonr
 from sklearn.metrics import mutual_info_score
 from collections import defaultdict
-from sklearn.model_selection import GridSearchCV
+from spark_sklearn import GridSearchCV
 from time import time
 from sklearn.metrics import classification_report
 import numpy.ma as ma
+from operator import itemgetter
+
+from pyspark import SparkContext,SparkConf
+
+conf = SparkConf().setAppName("App")
+conf = (conf.setMaster('local[*]')
+        .set('spark.executor.memory', '4G')
+        .set('spark.driver.memory', '45G')
+        .set('spark.driver.maxResultSize', '10G'))
+sc = SparkContext(conf=conf)
+
 # This checks all the mags in the whole catalogue are positive.
 # It cuts ones that aren't
 def checkmagspos_old(XX,XXpredict,specz_tr,specz_pr,classnames_tr,classnames_pr,subclass_tr,subclass_names_tr,subclass_pr,subclass_names_pr,OBJID_tr,OBJID_pr,SPECOBJID_pr,RA_tr,DEC_tr,RA_pr,DEC_pr,filtstats\
@@ -425,20 +436,18 @@ def gridsearch(XX,XXpredict,yy,yypredict,clf):
 #    tuned_parameters=settings.param_grid
     param_grid=settings.param_grid  
     print("Gridsearch start")
-    def report(results, n_top=3):
-        for i in range(1, n_top + 1):
-            candidates = numpy.flatnonzero(results['rank_test_score'] == i)
-            for candidate in candidates:
-                print("Model with rank: {0}".format(i))
-                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(results['mean_test_score'][candidate],results['std_test_score'][candidate]))
-                print("Parameters: {0}".format(results['params'][candidate]))
-                print("")
-    grid_search = GridSearchCV(clf, param_grid=param_grid,cv=10,n_jobs=-1,verbose=1)
+    def report(grid_scores, n_top=3):
+    	top_scores = sorted(grid_scores, key=itemgetter(1), reverse=True)[:n_top]
+    	for i, score in enumerate(top_scores):
+            print("Model with rank: {0}".format(i + 1))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})".format(score.mean_validation_score, numpy.std(score.cv_validation_scores)))
+            print("Parameters: {0}".format(score.parameters))
+            print("")
+    grid_search = GridSearchCV(sc, clf, param_grid=param_grid,cv=10,n_jobs=-1,verbose=1)
     start = time()
     grid_search.fit(XX, yy)
-
-    print("GridSearchCV took %.2f seconds for %d candidate parameter settings."% (time() - start, len(grid_search.cv_results_['params'])))
-    report(grid_search.cv_results_)
+    print("GridSearchCV took {:.2f} seconds for {:d} candidate settings.".format(time() - start, len(grid_search.grid_scores_)))
+    report(grid_search.grid_scores_)
     return grid_search
 #    X_train, X_test, y_train, y_test = XX,XXpredict,yy,yypredict
 #    
